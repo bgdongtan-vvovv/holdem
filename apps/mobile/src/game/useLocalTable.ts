@@ -23,8 +23,14 @@ function actionSfx(type: Action["type"]): Sfx {
       return "fold";
     case "check":
       return "check";
-    default:
-      return "chip"; // call / bet / raise / allin
+    case "call":
+      return "call";
+    case "bet":
+      return "bet";
+    case "raise":
+      return "raise";
+    case "allin":
+      return "allin";
   }
 }
 
@@ -66,9 +72,12 @@ export function useLocalTable(options: TableOptions) {
     });
   }, []);
 
-  // 사운드 초기화 + 첫 핸드 딜 사운드
+  // 사운드 초기화 + 첫 핸드 셔플/딜 사운드
   useEffect(() => {
-    initSfx().then(() => playSfx("deal"));
+    initSfx().then(() => {
+      playSfx("card_shuffle");
+      setTimeout(() => playSfx("card_deal"), 350);
+    });
   }, []);
 
   // 봇 자동 진행
@@ -94,13 +103,18 @@ export function useLocalTable(options: TableOptions) {
   useEffect(() => {
     const p = prev.current;
     if (p) {
-      if (state.board.length > p.board.length) playSfx("deal");
+      if (state.board.length > p.board.length) playSfx("card_deal");
       if (state.actingIndex === humanSeat && p.actingIndex !== humanSeat && !isHandOver(state)) {
-        playSfx("turn");
+        playSfx("your_turn");
       }
       if (!isHandOver(p) && isHandOver(state)) {
         const won = (state.result?.awards.find((a) => a.seat === humanSeat)?.amount ?? 0) > 0;
-        if (won) playSfx("win");
+        if (state.result?.wentToShowdown) {
+          playSfx("card_flip");
+          playSfx("hand_showdown");
+        }
+        setTimeout(() => playSfx("pot_win"), state.result?.wentToShowdown ? 500 : 0);
+        setTimeout(() => playSfx(won ? "win" : "lose"), state.result?.wentToShowdown ? 900 : 300);
       }
     }
     prev.current = state;
@@ -118,7 +132,8 @@ export function useLocalTable(options: TableOptions) {
     }));
     // 버튼 이동
     buttonIndex.current = (buttonIndex.current + 1) % seatConfigs.length;
-    playSfx("deal");
+    playSfx("card_shuffle");
+    setTimeout(() => playSfx("card_deal"), 350);
     setState(
       startHand({
         seats: seatConfigs,

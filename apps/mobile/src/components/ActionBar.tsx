@@ -4,6 +4,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import type { Action, HandState, LegalActions } from "@holdem/poker-engine";
 import { totalPot } from "@holdem/poker-engine";
 import { theme } from "../theme";
+import { formatGameMoney } from "../formatMoney";
 
 function GradientButton({
   colors,
@@ -53,7 +54,7 @@ export function ActionBar({
   const pot = totalPot(state);
   const presets = buildPresets(legal, pot);
   const clamp = (v: number) => Math.max(legal.minRaiseTo, Math.min(legal.maxRaiseTo, v));
-  const fmt = (v: number) => (v / 100).toFixed(2);
+  const fmt = formatGameMoney;
 
   return (
     <View style={styles.wrap}>

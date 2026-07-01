@@ -1,5 +1,5 @@
 import React from "react";
-import { StyleSheet, Text, View } from "react-native";
+import { ImageBackground, StyleSheet, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import type { Card } from "@holdem/poker-engine";
 import { theme } from "../theme";
@@ -11,48 +11,90 @@ const RANK_LABEL: Record<number, string> = {
 const SUIT_SYMBOL: Record<string, string> = { c: "♣", d: "♦", h: "♥", s: "♠" };
 
 const DIMS = {
-  sm: { w: 30, h: 42, corner: 11, pip: 18, radius: 5 },
-  md: { w: 44, h: 62, corner: 15, pip: 28, radius: 7 },
-  lg: { w: 56, h: 80, corner: 19, pip: 36, radius: 8 },
+  sm: { w: 50, h: 72, corner: 22, csuit: 14, pip: 33, radius: 7, pad: 2 },
+  md: { w: 64, h: 90, corner: 28, csuit: 17, pip: 42, radius: 8, pad: 3 },
+  lg: { w: 78, h: 110, corner: 34, csuit: 21, pip: 52, radius: 10, pad: 4 },
 } as const;
+
+function CardIndex({
+  rank, suit, color, fontSize, suitSize,
+}: {
+  rank: string;
+  suit: string;
+  color: string;
+  fontSize: number;
+  suitSize: number;
+}) {
+  return (
+    <View style={styles.index}>
+      <Text style={[styles.cornerRank, { color, fontSize }]}>{rank}</Text>
+      <Text style={[styles.cornerSuit, { color, fontSize: suitSize }]}>{suit}</Text>
+    </View>
+  );
+}
 
 export function PlayingCard({
   card,
   hidden,
   size = "md",
+  highlighted = false,
 }: {
   card?: Card;
   hidden?: boolean;
   size?: "sm" | "md" | "lg";
+  highlighted?: boolean;
 }) {
   const d = DIMS[size];
 
   if (hidden || !card) {
     return (
-      <LinearGradient
-        colors={[theme.cardBack, "#16244a"]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={[styles.card, { width: d.w, height: d.h, borderRadius: d.radius }, styles.back]}
+      <View
+        style={[
+          styles.card,
+          styles.cardDepth,
+          { width: d.w, height: d.h, borderRadius: d.radius },
+          styles.back,
+        ]}
       >
-        <View style={styles.backPattern}>
-          <Text style={{ color: theme.cardBackLine, fontSize: d.pip * 0.7, fontWeight: "900" }}>♠</Text>
-        </View>
-      </LinearGradient>
+        <ImageBackground
+          source={require("../../assets/images/card-back-luxury.png")}
+          resizeMode="cover"
+          style={styles.backImage}
+          imageStyle={{ borderRadius: Math.max(2, d.radius - 2) }}
+        />
+        <View style={styles.edgeShine} />
+      </View>
     );
   }
 
   const red = card.suit === "h" || card.suit === "d";
   const color = red ? theme.red : theme.black;
+  const rank = RANK_LABEL[card.rank]!;
+  const suit = SUIT_SYMBOL[card.suit]!;
+  const isCourt = card.rank >= 11 && card.rank <= 13;
 
   return (
-    <View style={[styles.card, styles.face, { width: d.w, height: d.h, borderRadius: d.radius }]}>
-      <View style={styles.corner}>
-        <Text style={[styles.cornerRank, { color, fontSize: d.corner }]}>{RANK_LABEL[card.rank]}</Text>
-        <Text style={[styles.cornerSuit, { color, fontSize: d.corner * 0.8 }]}>{SUIT_SYMBOL[card.suit]}</Text>
-      </View>
-      <Text style={[styles.pip, { color, fontSize: d.pip }]}>{SUIT_SYMBOL[card.suit]}</Text>
-    </View>
+    <LinearGradient
+      colors={["#ffffff", "#f3f4ee"]}
+      start={{ x: 0.5, y: 0 }}
+      end={{ x: 0.5, y: 1 }}
+      style={[
+        styles.card,
+        styles.cardDepth,
+        { width: d.w, height: d.h, borderRadius: d.radius, padding: d.pad },
+        highlighted && styles.highlighted,
+      ]}
+    >
+      <View style={styles.faceGloss} />
+      <CardIndex rank={rank} suit={suit} color={color} fontSize={d.corner} suitSize={d.csuit} />
+      {isCourt && (
+        <View style={styles.courtMedallion}>
+          <Text style={[styles.courtCrown, { color }]}>♛</Text>
+        </View>
+      )}
+      <Text style={[styles.heroSuit, { color, fontSize: d.pip }]}>{suit}</Text>
+      {highlighted && <View style={[styles.matchGem, { backgroundColor: theme.gold }]} />}
+    </LinearGradient>
   );
 }
 
@@ -60,30 +102,59 @@ const styles = StyleSheet.create({
   card: {
     margin: 2,
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.18)",
+    borderColor: "rgba(0,0,0,0.22)",
     shadowColor: "#000",
-    shadowOpacity: 0.35,
+    shadowOpacity: 0.4,
     shadowRadius: 3,
     shadowOffset: { width: 0, height: 2 },
     overflow: "hidden",
   },
-  face: { backgroundColor: theme.cardFace },
-  back: { alignItems: "center", justifyContent: "center", borderColor: theme.cardBackLine },
-  backPattern: {
-    width: "82%", height: "82%", borderRadius: 4,
-    borderWidth: 1.5, borderColor: "rgba(120,150,220,0.4)",
+  cardDepth: {
+    transform: [{ perspective: 500 }, { rotateX: "2deg" }],
+    borderBottomWidth: 3,
+    borderBottomColor: "rgba(20,20,24,0.38)",
+  },
+  highlighted: {
+    borderColor: "#ffe18a",
+    borderWidth: 2,
+    shadowColor: theme.gold,
+    shadowOpacity: 1,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 0 },
+    transform: [{ perspective: 500 }, { translateY: -7 }, { scale: 1.06 }, { rotateX: "2deg" }],
+  },
+  back: { alignItems: "center", justifyContent: "center", borderColor: "#d3a846", borderWidth: 1.5 },
+  backImage: { width: "100%", height: "100%" },
+  edgeShine: {
+    position: "absolute", left: 2, right: 2, top: 2, height: "18%",
+    borderTopLeftRadius: 8, borderTopRightRadius: 8,
+    backgroundColor: "rgba(255,255,255,0.12)",
+  },
+  faceGloss: {
+    position: "absolute", left: 1, right: 1, top: 1, height: "34%",
+    borderTopLeftRadius: 7, borderTopRightRadius: 7,
+    backgroundColor: "rgba(255,255,255,0.36)",
+  },
+  matchGem: {
+    position: "absolute", top: 3, right: 3, width: 5, height: 5, borderRadius: 3,
+    shadowColor: "#fff", shadowOpacity: 1, shadowRadius: 3,
+  },
+  index: { position: "absolute", top: 1, left: 3, alignItems: "center", zIndex: 2 },
+  cornerRank: {
+    fontFamily: "serif", fontWeight: "900", lineHeight: undefined,
+    letterSpacing: -1,
+  },
+  cornerSuit: { fontFamily: "serif", fontWeight: "900", marginTop: -5 },
+  heroSuit: {
+    position: "absolute", right: 3, bottom: -1,
+    fontFamily: "serif", fontWeight: "900", textAlign: "center",
+  },
+  courtMedallion: {
+    position: "absolute", left: "34%", top: "31%",
+    width: "50%", height: "50%", borderRadius: 4,
+    backgroundColor: "#f1d58b", borderWidth: 1, borderColor: "#b98a35",
     alignItems: "center", justifyContent: "center",
+    transform: [{ rotate: "8deg" }],
   },
-  corner: { position: "absolute", top: 2, left: 3, alignItems: "center" },
-  cornerRank: { fontWeight: "900", lineHeight: undefined },
-  cornerSuit: { fontWeight: "700", marginTop: -2 },
-  pip: {
-    fontWeight: "700",
-    textAlign: "center",
-    flex: 1,
-    textAlignVertical: "center",
-    lineHeight: undefined,
-    alignSelf: "center",
-    marginTop: "18%",
-  },
+  courtCrown: { fontFamily: "serif", fontSize: 21, fontWeight: "900" },
 });

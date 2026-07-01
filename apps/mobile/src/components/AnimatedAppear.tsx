@@ -8,13 +8,17 @@ import { Animated, type ViewStyle } from "react-native";
 export function AnimatedAppear({
   children,
   style,
+  translateX = 0,
   translateY = 10,
+  rotateFrom = "0deg",
   delay = 0,
-  duration = 220,
+  duration = 360,
 }: {
   children: React.ReactNode;
   style?: ViewStyle | ViewStyle[];
+  translateX?: number;
   translateY?: number;
+  rotateFrom?: string;
   delay?: number;
   duration?: number;
 }) {
@@ -30,8 +34,10 @@ export function AnimatedAppear({
         {
           opacity: v,
           transform: [
+            { translateX: v.interpolate({ inputRange: [0, 1], outputRange: [translateX, 0] }) },
             { translateY: v.interpolate({ inputRange: [0, 1], outputRange: [translateY, 0] }) },
             { scale: v.interpolate({ inputRange: [0, 1], outputRange: [0.85, 1] }) },
+            { rotate: v.interpolate({ inputRange: [0, 1], outputRange: [rotateFrom, "0deg"] }) },
           ],
         },
       ]}

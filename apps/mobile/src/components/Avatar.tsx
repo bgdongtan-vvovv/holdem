@@ -16,7 +16,7 @@ export function Avatar({ seat, size = 64 }: { seat: number; size?: number }) {
         { width: size, height: size, borderRadius: size / 2, backgroundColor: bg },
       ]}
     >
-      <Text style={{ fontSize: size * 0.55 }}>{emoji}</Text>
+      <Text style={{ fontSize: size * 0.68 }}>{emoji}</Text>
     </View>
   );
 }

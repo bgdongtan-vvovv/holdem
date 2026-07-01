@@ -1,0 +1,34 @@
+{
+  "version": 1,
+  "required": [
+    "ui_click.mp3",
+    "ui_confirm.mp3",
+    "ui_back.mp3",
+    "card_shuffle.mp3",
+    "card_deal.mp3",
+    "card_flip.mp3",
+    "card_fold.mp3",
+    "chip_single.mp3",
+    "chip_stack.mp3",
+    "chips_collect.mp3",
+    "pot_push.mp3",
+    "action_check.mp3",
+    "action_call.mp3",
+    "action_bet.mp3",
+    "action_raise.mp3",
+    "action_allin.mp3",
+    "turn_start.mp3",
+    "turn_warning.mp3",
+    "hand_win.mp3",
+    "hand_lose.mp3",
+    "hand_showdown.mp3",
+    "notification.mp3",
+    "chat_message.mp3"
+  ],
+  "optional": [
+    "music_login.mp3",
+    "music_lobby.mp3",
+    "ambience_table.mp3",
+    "music_final_table.mp3"
+  ]
+}

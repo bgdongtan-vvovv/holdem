@@ -6,8 +6,8 @@ import { theme } from "../theme";
 import { PokerTable } from "../components/PokerTable";
 import { ActionBar } from "../components/ActionBar";
 import { useLocalTable, type TableOptions } from "../game/useLocalTable";
+import { formatGameMoney } from "../formatMoney";
 
-// 엔진은 정수 단위(=센트). 표시는 /100 → 0.1/0.2 스타일.
 const SMALL_BLIND = 10;
 const BIG_BLIND = 20;
 
@@ -36,7 +36,7 @@ export function GameScreen({ onExit }: { onExit: () => void }) {
         </View>
         <View style={styles.topRight}>
           <Text style={styles.stakeBadge}>
-            {SMALL_BLIND / 100} / {BIG_BLIND / 100}
+            {formatGameMoney(SMALL_BLIND)} / {formatGameMoney(BIG_BLIND)}
           </Text>
           <View style={styles.moveBtn}>
             <Text style={styles.moveTxt}>테이블 이동</Text>
@@ -79,7 +79,7 @@ function ResultPanel({
       const name = state.players[a.seat]?.id ?? `seat ${a.seat}`;
       const sd = result?.showdown.find((s) => s.seat === a.seat);
       const handName = sd?.hand ? ` · ${HAND_CATEGORY_NAMES[sd.hand.category]}` : "";
-      return `${name} +${(a.amount / 100).toFixed(2)}${handName}`;
+      return `${name} +${formatGameMoney(a.amount)}${handName}`;
     })
     .join("   ");
 

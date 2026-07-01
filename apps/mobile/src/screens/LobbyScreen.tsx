@@ -1,5 +1,5 @@
 import React from "react";
-import { Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
+import { ImageBackground, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { theme } from "../theme";
 
@@ -7,11 +7,17 @@ export function LobbyScreen({ onStartGame }: { onStartGame: () => void }) {
   return (
     <SafeAreaView style={styles.root}>
       <StatusBar style="light" />
+      <ImageBackground
+        source={require("../../assets/images/casino-lobby-bg.png")}
+        resizeMode="cover"
+        style={StyleSheet.absoluteFill}
+      />
+      <View style={styles.backdropShade} />
 
       {/* 상단 코인/메뉴 */}
       <View style={styles.topRow}>
         <View style={styles.coin}>
-          <Text style={styles.coinIcon}>◈</Text>
+          <Text style={styles.coinIcon}>◉</Text>
           <Text style={styles.coinTxt}>10</Text>
         </View>
         <Text style={styles.menu}>≡</Text>
@@ -129,7 +135,11 @@ function Tab({ icon, label, active }: { icon: string; label: string; active?: bo
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: theme.bg },
+  root: { flex: 1, backgroundColor: "#080706" },
+  backdropShade: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.38)",
+  },
   topRow: {
     flexDirection: "row", justifyContent: "space-between", alignItems: "center",
     paddingHorizontal: 16, paddingVertical: 8,
@@ -141,7 +151,8 @@ const styles = StyleSheet.create({
 
   profile: {
     flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingBottom: 12, gap: 6,
-    borderBottomWidth: 1, borderBottomColor: "rgba(242,193,78,0.25)",
+    borderBottomWidth: 1, borderBottomColor: "rgba(242,193,78,0.34)",
+    backgroundColor: "rgba(15,14,13,0.82)",
   },
   avatar: {
     width: 54, height: 54, borderRadius: 27, backgroundColor: "#2b3350",
@@ -159,8 +170,9 @@ const styles = StyleSheet.create({
 
   banner: {
     margin: 14, borderRadius: 14, padding: 18, minHeight: 150,
-    backgroundColor: "#3a0d0d", borderWidth: 1, borderColor: "#5a1a1a",
+    backgroundColor: "rgba(52,9,8,0.94)", borderWidth: 1, borderColor: "#8b3f24",
     justifyContent: "center",
+    shadowColor: "#e46b2c", shadowOpacity: 0.32, shadowRadius: 14,
   },
   bannerSmall: { color: "#ff5a4d", fontSize: 22, fontWeight: "900" },
   bannerBig: { color: theme.gold, fontSize: 44, fontWeight: "900", letterSpacing: 1 },
@@ -173,8 +185,9 @@ const styles = StyleSheet.create({
 
   modeRow: { flexDirection: "row", paddingHorizontal: 10, gap: 8 },
   modeCard: {
-    flex: 1, backgroundColor: "#141a28", borderRadius: 12, padding: 10, alignItems: "center",
-    borderWidth: 1, borderColor: theme.railHi,
+    flex: 1, backgroundColor: "rgba(35,31,31,0.96)", borderRadius: 12, padding: 10, alignItems: "center",
+    borderWidth: 1, borderColor: "rgba(224,184,88,0.5)",
+    shadowColor: theme.gold, shadowOpacity: 0.25, shadowRadius: 8,
   },
   modeTitle: { color: theme.text, fontWeight: "900", fontSize: 15 },
   modeValue: { color: theme.text, fontWeight: "900", fontSize: 18, marginTop: 6 },
@@ -190,13 +203,15 @@ const styles = StyleSheet.create({
   tileBig: { width: 104 },
   tileArt: {
     width: "100%", aspectRatio: 1, borderRadius: 14, alignItems: "center", justifyContent: "center",
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.15)",
+    borderWidth: 2, borderColor: "rgba(242,193,78,0.5)",
+    shadowColor: "#000", shadowOpacity: 0.75, shadowRadius: 8,
+    shadowOffset: { width: 0, height: 5 },
   },
   tileLabel: { color: theme.gold, fontWeight: "800", fontSize: 13, marginTop: 6 },
 
   tabbar: {
     position: "absolute", left: 0, right: 0, bottom: 0, height: 74,
-    flexDirection: "row", backgroundColor: "#0c1220", borderTopWidth: 1, borderTopColor: theme.railHi,
+    flexDirection: "row", backgroundColor: "rgba(13,13,13,0.98)", borderTopWidth: 1, borderTopColor: "#6d5729",
     paddingBottom: 8, paddingTop: 8,
   },
   tab: { flex: 1, alignItems: "center", gap: 3 },

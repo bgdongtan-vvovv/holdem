@@ -1,10 +1,12 @@
 import React, { useEffect, useRef } from "react";
-import { Animated, StyleSheet, Text, View } from "react-native";
+import { Animated, Easing, StyleSheet, Text, View } from "react-native";
 import type { PlayerState } from "@holdem/poker-engine";
+import type { Card } from "@holdem/poker-engine";
 import { theme } from "../theme";
 import { Avatar } from "./Avatar";
 import { PlayingCard } from "./PlayingCard";
 import { AnimatedAppear } from "./AnimatedAppear";
+import { formatGameMoney } from "../formatMoney";
 
 export function TableSeat({
   player,
@@ -12,18 +14,26 @@ export function TableSeat({
   isActive,
   revealCards,
   isWinner,
+  matchedCards,
+  dealIndex,
+  playerCount,
+  dealOffset,
 }: {
   player: PlayerState;
   isHuman: boolean;
   isActive: boolean;
   revealCards: boolean;
   isWinner: boolean;
+  matchedCards?: Set<string>;
+  dealIndex: number;
+  playerCount: number;
+  dealOffset: { x: number; y: number };
 }) {
   const folded = player.status === "folded";
   const out = player.status === "out";
   const showCards = isHuman || revealCards;
   const hasCards = player.holeCards.length > 0 && !folded && !out;
-  const avatarSize = isHuman ? 72 : 58;
+  const avatarSize = isHuman ? 82 : 68;
 
   // 활성 좌석 펄스
   const pulse = useRef(new Animated.Value(0)).current;
@@ -59,7 +69,7 @@ export function TableSeat({
 
       {/* 승자 배지 */}
       {isWinner && (
-        <AnimatedAppear style={styles.winBadge} translateY={-6} duration={300}>
+        <AnimatedAppear style={styles.winBadge} translateY={-10} duration={520}>
           <Text style={styles.winText}>WIN</Text>
         </AnimatedAppear>
       )}
@@ -68,14 +78,23 @@ export function TableSeat({
       {hasCards && (
         <View style={[styles.cards, isHuman ? styles.cardsHuman : styles.cardsOther]}>
           {player.holeCards.map((c, i) => (
-            <AnimatedAppear key={i} delay={i * 90} translateY={-16} duration={240}>
-              <PlayingCard card={c} hidden={!showCards} size={isHuman ? "md" : "sm"} />
-            </AnimatedAppear>
+            <DealtCard
+              key={cardKey(c)}
+              delay={(i * playerCount + dealIndex) * 270}
+              from={dealOffset}
+            >
+              <PlayingCard
+                card={c}
+                hidden={!showCards}
+                size={isHuman ? "md" : "sm"}
+                highlighted={showCards && matchedCards?.has(cardKey(c))}
+              />
+            </DealtCard>
           ))}
         </View>
       )}
 
-      <View style={isWinner ? styles.avatarWin : undefined}>
+      <View style={[styles.avatarLayer, isWinner ? styles.avatarWin : undefined]}>
         <Avatar seat={player.seat} size={avatarSize} />
       </View>
 
@@ -83,7 +102,7 @@ export function TableSeat({
         <Text style={styles.name} numberOfLines={1}>
           {player.id}
         </Text>
-        <Text style={styles.stack}>{out ? "OUT" : (player.stack / 100).toFixed(2)}</Text>
+        <Text style={styles.stack}>{out ? "OUT" : formatGameMoney(player.stack)}</Text>
         {isActive && (
           <View style={styles.timerTrack}>
             <View style={styles.timerFill} />
@@ -94,8 +113,49 @@ export function TableSeat({
   );
 }
 
+function DealtCard({
+  children,
+  delay,
+  from,
+}: {
+  children: React.ReactNode;
+  delay: number;
+  from: { x: number; y: number };
+}) {
+  const progress = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    Animated.timing(progress, {
+      toValue: 1,
+      delay,
+      duration: 980,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: false,
+    }).start();
+  }, [delay, progress]);
+
+  return (
+    <Animated.View
+      style={{
+        opacity: progress,
+        transform: [
+          { translateX: progress.interpolate({ inputRange: [0, 1], outputRange: [from.x, 0] }) },
+          { translateY: progress.interpolate({ inputRange: [0, 1], outputRange: [from.y, 0] }) },
+          { scale: progress.interpolate({ inputRange: [0, 1], outputRange: [0.35, 1] }) },
+          { rotate: progress.interpolate({ inputRange: [0, 1], outputRange: ["-18deg", "0deg"] }) },
+        ],
+      }}
+    >
+      {children}
+    </Animated.View>
+  );
+}
+
+function cardKey(card: Card): string {
+  return `${card.rank}${card.suit}`;
+}
+
 const styles = StyleSheet.create({
-  wrap: { alignItems: "center", width: 96 },
+  wrap: { alignItems: "center", width: 110 },
   folded: { opacity: 0.45 },
   pulseRing: {
     position: "absolute",
@@ -121,9 +181,10 @@ const styles = StyleSheet.create({
     shadowRadius: 14,
     shadowOffset: { width: 0, height: 0 },
   },
-  cards: { position: "absolute", flexDirection: "row" },
-  cardsOther: { top: -6, right: -14, zIndex: -1 },
-  cardsHuman: { top: 10, right: -58, zIndex: 3 },
+  avatarLayer: { zIndex: 4 },
+  cards: { position: "absolute", flexDirection: "row", zIndex: 3 },
+  cardsOther: { top: 6, left: 82 },
+  cardsHuman: { top: 3, left: 96 },
   plate: {
     marginTop: -10,
     minWidth: 84,

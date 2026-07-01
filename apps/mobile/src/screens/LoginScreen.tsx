@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Pressable, SafeAreaView, StyleSheet, Text, TextInput, View } from "react-native";
+import { ImageBackground, Pressable, SafeAreaView, StyleSheet, Text, TextInput, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { theme } from "../theme";
 
@@ -10,6 +10,12 @@ export function LoginScreen({ onLogin }: { onLogin: () => void }) {
   return (
     <SafeAreaView style={styles.root}>
       <StatusBar style="light" />
+      <ImageBackground
+        source={require("../../assets/images/casino-lobby-bg.png")}
+        resizeMode="cover"
+        style={StyleSheet.absoluteFill}
+      />
+      <View style={styles.backdropShade} />
       <View style={styles.header}>
         <Text style={styles.brandTop}>
           <Text style={{ color: theme.gold }}>♠ HOLDEM</Text>
@@ -25,9 +31,10 @@ export function LoginScreen({ onLogin }: { onLogin: () => void }) {
       <View style={styles.center}>
         <View style={styles.card}>
           <View style={styles.logo}>
-            <Text style={styles.logoTxt}>♠</Text>
+            <Text style={styles.logoMonogram}>H</Text>
+            <Text style={styles.logoSuit}>♠</Text>
           </View>
-          <Text style={styles.title}>HOLDEM 로그인</Text>
+          <Text style={styles.title}>HOLDEM CLUB 로그인</Text>
 
           <View style={styles.field}>
             <Text style={styles.label}>아이디</Text>
@@ -69,7 +76,7 @@ export function LoginScreen({ onLogin }: { onLogin: () => void }) {
           <Text style={styles.footerLinks}>비밀번호 찾기 | 회원가입하기</Text>
           <Text style={styles.version}>2026.06.26.1</Text>
         </View>
-        <Text style={styles.tagline}>Global No.1 Mind Sports</Text>
+        <Text style={styles.tagline}>PLAY BOLD · PLAY SMART</Text>
       </View>
     </SafeAreaView>
   );
@@ -97,7 +104,11 @@ function SocialButton({
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#05070d" },
+  root: { flex: 1, backgroundColor: "#050505" },
+  backdropShade: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: "rgba(0,0,0,0.38)",
+  },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -115,24 +126,31 @@ const styles = StyleSheet.create({
   card: {
     width: "100%",
     maxWidth: 360,
-    backgroundColor: "rgba(30,34,42,0.92)",
-    borderRadius: 16,
+    backgroundColor: "rgba(24,23,23,0.95)",
+    borderRadius: 10,
     padding: 24,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.06)",
+    borderColor: "rgba(217,174,76,0.32)",
+    shadowColor: "#000", shadowOpacity: 0.85, shadowRadius: 24,
+    shadowOffset: { width: 0, height: 12 },
   },
   logo: {
-    width: 60, height: 60, borderRadius: 12, backgroundColor: "#1a1d24",
-    alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: theme.goldDeep, marginBottom: 10,
+    width: 58, height: 62, borderRadius: 8, backgroundColor: "#161616",
+    alignItems: "center", justifyContent: "center", borderWidth: 2,
+    borderColor: theme.goldDeep, marginBottom: 12,
+    transform: [{ rotate: "-5deg" }],
+    shadowColor: theme.gold, shadowOpacity: 0.45, shadowRadius: 10,
   },
-  logoTxt: { color: theme.gold, fontSize: 30, fontWeight: "900" },
-  title: { color: theme.textMuted, fontSize: 18, fontWeight: "800", marginBottom: 20 },
+  logoMonogram: { color: theme.gold, fontSize: 28, fontFamily: "serif", fontWeight: "900" },
+  logoSuit: { color: "#f4e4b5", fontSize: 14, marginTop: -8 },
+  title: { color: "#d7d0c1", fontSize: 18, fontWeight: "800", marginBottom: 20 },
   field: { width: "100%", flexDirection: "row", alignItems: "center", marginBottom: 12 },
   label: { color: theme.textMuted, width: 70, fontSize: 14, fontWeight: "600" },
   input: {
-    flex: 1, backgroundColor: "#43474f", borderRadius: 8, paddingHorizontal: 12, paddingVertical: 12,
+    flex: 1, backgroundColor: "#383838", borderRadius: 7, paddingHorizontal: 12, paddingVertical: 12,
     color: theme.text, fontSize: 14,
+    borderWidth: 1, borderColor: "rgba(255,255,255,0.05)",
   },
   loginBtn: {
     width: "100%", backgroundColor: "#7c5cff", borderRadius: 8, paddingVertical: 14,
@@ -153,5 +171,8 @@ const styles = StyleSheet.create({
     color: theme.textMuted, fontSize: 11, marginTop: 12,
     borderWidth: 1, borderColor: theme.railHi, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2,
   },
-  tagline: { color: theme.goldDeep, fontSize: 22, fontWeight: "900", marginTop: 20 },
+  tagline: {
+    color: "#d8b85d", fontSize: 19, fontWeight: "900", marginTop: 20,
+    letterSpacing: 1.5, textShadowColor: "#000", textShadowRadius: 8,
+  },
 });
