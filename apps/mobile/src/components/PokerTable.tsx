@@ -7,6 +7,7 @@ import { theme } from "../theme";
 import { PlayingCard } from "./PlayingCard";
 import { TableSeat } from "./TableSeat";
 import { Chip, chipColor } from "./Chip";
+import { AnimatedAppear } from "./AnimatedAppear";
 import type { SeatMeta } from "../game/useLocalTable";
 
 // 좌석/베팅칩/딜러버튼 앵커 (테이블 영역 대비 %). hero = 바텀 센터.
@@ -57,6 +58,13 @@ export function PokerTable({
   const visualOf = new Map<number, number>();
   order.forEach((seat, vi) => visualOf.set(seat, vi));
 
+  // 승자 좌석 (핸드 종료 시 하이라이트용)
+  const winners = new Set<number>(
+    state.street === "complete"
+      ? (state.result?.awards ?? []).filter((a) => a.amount > 0).map((a) => a.seat)
+      : [],
+  );
+
   return (
     <View style={styles.area}>
       {/* 오벌 펠트 */}
@@ -75,7 +83,9 @@ export function PokerTable({
           {state.board.length > 0 && (
             <View style={styles.board}>
               {state.board.map((c, i) => (
-                <PlayingCard key={i} card={c} size="md" />
+                <AnimatedAppear key={`${c.rank}${c.suit}`} delay={(i % 3) * 80} translateY={-14}>
+                  <PlayingCard card={c} size="md" />
+                </AnimatedAppear>
               ))}
             </View>
           )}
@@ -100,10 +110,10 @@ export function PokerTable({
         return (
           <React.Fragment key={p.seat}>
             {p.committed > 0 && (
-              <View style={[styles.betBubble, anchor(BET_POS[vi]!)]}>
+              <AnimatedAppear style={[styles.betBubble, anchor(BET_POS[vi]!)]} translateY={6}>
                 <Chip size={16} color={chipColor(p.committed)} />
                 <Text style={styles.betText}>{(p.committed / 100).toFixed(2)}</Text>
-              </View>
+              </AnimatedAppear>
             )}
             <View style={[styles.seat, anchor(SEAT_POS[vi]!)]}>
               <TableSeat
@@ -111,6 +121,7 @@ export function PokerTable({
                 isHuman={isHuman}
                 isActive={state.actingIndex === p.seat}
                 revealCards={reveal}
+                isWinner={winners.has(p.seat)}
               />
             </View>
           </React.Fragment>

@@ -1,20 +1,23 @@
-import React from "react";
-import { StyleSheet, Text, View } from "react-native";
+import React, { useEffect, useRef } from "react";
+import { Animated, StyleSheet, Text, View } from "react-native";
 import type { PlayerState } from "@holdem/poker-engine";
 import { theme } from "../theme";
 import { Avatar } from "./Avatar";
 import { PlayingCard } from "./PlayingCard";
+import { AnimatedAppear } from "./AnimatedAppear";
 
 export function TableSeat({
   player,
   isHuman,
   isActive,
   revealCards,
+  isWinner,
 }: {
   player: PlayerState;
   isHuman: boolean;
   isActive: boolean;
   revealCards: boolean;
+  isWinner: boolean;
 }) {
   const folded = player.status === "folded";
   const out = player.status === "out";
@@ -22,25 +25,65 @@ export function TableSeat({
   const hasCards = player.holeCards.length > 0 && !folded && !out;
   const avatarSize = isHuman ? 72 : 58;
 
+  // 활성 좌석 펄스
+  const pulse = useRef(new Animated.Value(0)).current;
+  useEffect(() => {
+    if (!isActive) return;
+    const loop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, { toValue: 1, duration: 700, useNativeDriver: false }),
+        Animated.timing(pulse, { toValue: 0, duration: 700, useNativeDriver: false }),
+      ]),
+    );
+    loop.start();
+    return () => loop.stop();
+  }, [isActive, pulse]);
+
   return (
     <View style={[styles.wrap, folded && styles.folded]}>
-      {/* 홀카드: 아바타 뒤로 살짝 겹쳐 표시 */}
+      {/* 활성 펄스 링 */}
+      {isActive && (
+        <Animated.View
+          style={[
+            styles.pulseRing,
+            {
+              width: avatarSize + 16,
+              height: avatarSize + 16,
+              borderRadius: (avatarSize + 16) / 2,
+              opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.25, 0.85] }),
+              transform: [{ scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.95, 1.12] }) }],
+            },
+          ]}
+        />
+      )}
+
+      {/* 승자 배지 */}
+      {isWinner && (
+        <AnimatedAppear style={styles.winBadge} translateY={-6} duration={300}>
+          <Text style={styles.winText}>WIN</Text>
+        </AnimatedAppear>
+      )}
+
+      {/* 홀카드 */}
       {hasCards && (
         <View style={[styles.cards, isHuman ? styles.cardsHuman : styles.cardsOther]}>
           {player.holeCards.map((c, i) => (
-            <PlayingCard key={i} card={c} hidden={!showCards} size={isHuman ? "md" : "sm"} />
+            <AnimatedAppear key={i} delay={i * 90} translateY={-16} duration={240}>
+              <PlayingCard card={c} hidden={!showCards} size={isHuman ? "md" : "sm"} />
+            </AnimatedAppear>
           ))}
         </View>
       )}
 
-      <Avatar seat={player.seat} size={avatarSize} />
+      <View style={isWinner ? styles.avatarWin : undefined}>
+        <Avatar seat={player.seat} size={avatarSize} />
+      </View>
 
-      <View style={[styles.plate, isActive && styles.plateActive]}>
+      <View style={[styles.plate, isActive && styles.plateActive, isWinner && styles.plateWin]}>
         <Text style={styles.name} numberOfLines={1}>
           {player.id}
         </Text>
         <Text style={styles.stack}>{out ? "OUT" : (player.stack / 100).toFixed(2)}</Text>
-        {/* 타임뱅크 바 (활성 좌석) */}
         {isActive && (
           <View style={styles.timerTrack}>
             <View style={styles.timerFill} />
@@ -54,9 +97,32 @@ export function TableSeat({
 const styles = StyleSheet.create({
   wrap: { alignItems: "center", width: 96 },
   folded: { opacity: 0.45 },
+  pulseRing: {
+    position: "absolute",
+    top: -8,
+    borderWidth: 3,
+    borderColor: theme.gold,
+  },
+  winBadge: {
+    position: "absolute",
+    top: -18,
+    zIndex: 5,
+    backgroundColor: theme.gold,
+    paddingHorizontal: 10,
+    paddingVertical: 2,
+    borderRadius: 10,
+    borderWidth: 1,
+    borderColor: "#fff7d6",
+  },
+  winText: { color: "#1a1a1a", fontWeight: "900", fontSize: 12, letterSpacing: 1 },
+  avatarWin: {
+    shadowColor: theme.gold,
+    shadowOpacity: 1,
+    shadowRadius: 14,
+    shadowOffset: { width: 0, height: 0 },
+  },
   cards: { position: "absolute", flexDirection: "row" },
   cardsOther: { top: -6, right: -14, zIndex: -1 },
-  // 히어로는 두 장 모두 아바타 앞·오른쪽에 노출
   cardsHuman: { top: 10, right: -58, zIndex: 3 },
   plate: {
     marginTop: -10,
@@ -71,6 +137,7 @@ const styles = StyleSheet.create({
     borderColor: "transparent",
   },
   plateActive: { borderColor: theme.namePlateActive, shadowColor: theme.gold, shadowOpacity: 0.9, shadowRadius: 8 },
+  plateWin: { borderColor: theme.gold, backgroundColor: "rgba(60,45,10,0.92)" },
   name: { color: theme.text, fontWeight: "700", fontSize: 12, maxWidth: 88 },
   stack: { color: theme.gold, fontWeight: "800", fontSize: 13 },
   timerTrack: {
