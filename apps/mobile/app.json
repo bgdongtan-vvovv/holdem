@@ -1,0 +1,21 @@
+{
+  "expo": {
+    "name": "Holdem",
+    "slug": "holdem",
+    "version": "0.1.0",
+    "orientation": "portrait",
+    "userInterfaceStyle": "dark",
+    "backgroundColor": "#0b3d2e",
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.holdem.app"
+    },
+    "android": {
+      "package": "com.holdem.app"
+    },
+    "web": {
+      "bundler": "metro"
+    }
+  }
+}

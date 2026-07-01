@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "holdem-web",
+      "runtimeExecutable": "python3",
+      "runtimeArgs": ["-m", "http.server", "8088", "--directory", "apps/mobile/dist"],
+      "port": 8088
+    }
+  ]
+}

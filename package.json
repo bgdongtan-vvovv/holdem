@@ -1,0 +1,20 @@
+{
+  "name": "holdem",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Multiplayer online Texas Hold'em (AA Poker style) — mobile-first",
+  "workspaces": [
+    "packages/*",
+    "apps/*"
+  ],
+  "scripts": {
+    "build": "npm run build --workspaces --if-present",
+    "test": "npm run test --workspaces --if-present",
+    "test:engine": "npm run test -w @holdem/poker-engine",
+    "dev:server": "npm run dev -w @holdem/server",
+    "dev:mobile": "npm run start -w @holdem/mobile"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}
