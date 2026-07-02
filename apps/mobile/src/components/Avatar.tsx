@@ -1,22 +1,36 @@
 import React from "react";
-import { StyleSheet, Text, View } from "react-native";
-import { AVATAR_BG, AVATAR_EMOJI } from "../theme";
+import { Image, StyleSheet, View } from "react-native";
+
+export const AVATARS = [
+  require("../../assets/avatars/avatar_male_01_transparent.png"),
+  require("../../assets/avatars/avatar_female_01_transparent.png"),
+  require("../../assets/avatars/avatar_male_02_transparent.png"),
+  require("../../assets/avatars/avatar_female_02_transparent.png"),
+  require("../../assets/avatars/avatar_male_03_transparent.png"),
+  require("../../assets/avatars/avatar_female_03_transparent.png"),
+] as const;
 
 /**
- * 좌석 아바타 (자리표시). 실제 3D 캐릭터 이미지로 교체할 자리.
- * seat 인덱스로 이모지/배경색을 안정적으로 고른다.
+ * 좌석별 3D 캐릭터 아바타.
  */
-export function Avatar({ seat, size = 64 }: { seat: number; size?: number }) {
-  const emoji = AVATAR_EMOJI[seat % AVATAR_EMOJI.length];
-  const bg = AVATAR_BG[seat % AVATAR_BG.length];
+export function Avatar({
+  seat,
+  avatarIndex,
+  size = 64,
+}: {
+  seat: number;
+  avatarIndex?: number;
+  size?: number;
+}) {
+  const source = AVATARS[(avatarIndex ?? seat) % AVATARS.length];
   return (
     <View
       style={[
         styles.wrap,
-        { width: size, height: size, borderRadius: size / 2, backgroundColor: bg },
+        { width: size, height: size },
       ]}
     >
-      <Text style={{ fontSize: size * 0.68 }}>{emoji}</Text>
+      <Image source={source} resizeMode="contain" style={styles.image} />
     </View>
   );
 }
@@ -25,8 +39,6 @@ const styles = StyleSheet.create({
   wrap: {
     alignItems: "center",
     justifyContent: "center",
-    borderWidth: 2,
-    borderColor: "rgba(255,255,255,0.35)",
-    overflow: "hidden",
   },
+  image: { width: "100%", height: "100%" },
 });

@@ -133,46 +133,40 @@ export function ChipPile({
   chipSize?: number;
 }) {
   let remaining = Math.max(0, Math.round(amount));
-  const chips: { value: number; color: string }[] = [];
+  const stacks: { value: number; count: number }[] = [];
   for (const denomination of DENOMINATIONS) {
     const count = Math.floor(remaining / denomination.value);
     remaining %= denomination.value;
-    for (let i = 0; i < count; i++) chips.push(denomination);
+    for (let i = 0; i < count; i += 5) {
+      stacks.push({ value: denomination.value, count: Math.min(5, count - i) });
+    }
   }
 
-  const columns: typeof chips[] = [];
-  for (let i = 0; i < chips.length; i += 5) columns.push(chips.slice(i, i + 5));
-  const overlap = chipSize * 0.2;
-  const columnWidth = chipSize * 0.78;
-  const maxHeight = chipSize + Math.max(0, Math.min(5, chips.length) - 1) * overlap;
+  const imageSize = chipSize * 1.65;
+  const columnWidth = imageSize * 0.62;
 
   return (
     <View
       style={{
-        width: Math.max(chipSize, chipSize + Math.max(0, columns.length - 1) * columnWidth),
-        height: maxHeight,
+        width: Math.max(imageSize, imageSize + Math.max(0, stacks.length - 1) * columnWidth),
+        height: imageSize,
       }}
     >
-      {columns.map((column, columnIndex) => (
-        <View
-          key={columnIndex}
+      {stacks.map((stack, index) => (
+        <Image
+          key={`${stack.value}-${index}`}
+          source={chipStackSource(stack.value)}
+          resizeMode="contain"
           style={{
             position: "absolute",
-            left: columnIndex * columnWidth,
+            left: index * columnWidth,
             bottom: 0,
-            width: chipSize,
-            height: chipSize + Math.max(0, column.length - 1) * overlap,
+            width: imageSize,
+            height: imageSize,
+            opacity: 0.82 + stack.count * 0.036,
+            transform: [{ scale: 0.78 + stack.count * 0.044 }],
           }}
-        >
-          {column.map((chip, chipIndex) => (
-            <View
-              key={`${chip.value}-${chipIndex}`}
-              style={{ position: "absolute", left: 0, bottom: chipIndex * overlap }}
-            >
-              <Chip size={chipSize} color={chip.color} />
-            </View>
-          ))}
-        </View>
+        />
       ))}
     </View>
   );

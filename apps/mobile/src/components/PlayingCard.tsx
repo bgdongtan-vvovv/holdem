@@ -11,9 +11,9 @@ const RANK_LABEL: Record<number, string> = {
 const SUIT_SYMBOL: Record<string, string> = { c: "♣", d: "♦", h: "♥", s: "♠" };
 
 const DIMS = {
-  sm: { w: 50, h: 72, corner: 22, csuit: 14, pip: 33, radius: 7, pad: 2 },
-  md: { w: 64, h: 90, corner: 28, csuit: 17, pip: 42, radius: 8, pad: 3 },
-  lg: { w: 78, h: 110, corner: 34, csuit: 21, pip: 52, radius: 10, pad: 4 },
+  sm: { w: 36, h: 52, corner: 16, csuit: 10, pip: 24, radius: 6, pad: 2 },
+  md: { w: 46, h: 66, corner: 20, csuit: 13, pip: 30, radius: 7, pad: 2 },
+  lg: { w: 62, h: 88, corner: 27, csuit: 17, pip: 42, radius: 9, pad: 3 },
 } as const;
 
 function CardIndex({
@@ -93,7 +93,6 @@ export function PlayingCard({
         </View>
       )}
       <Text style={[styles.heroSuit, { color, fontSize: d.pip }]}>{suit}</Text>
-      {highlighted && <View style={[styles.matchGem, { backgroundColor: theme.gold }]} />}
     </LinearGradient>
   );
 }
@@ -103,10 +102,9 @@ const styles = StyleSheet.create({
     margin: 2,
     borderWidth: 1,
     borderColor: "rgba(0,0,0,0.22)",
-    shadowColor: "#000",
-    shadowOpacity: 0.4,
-    shadowRadius: 3,
-    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0,
+    shadowRadius: 0,
+    shadowOffset: { width: 0, height: 0 },
     overflow: "hidden",
   },
   cardDepth: {
@@ -115,13 +113,7 @@ const styles = StyleSheet.create({
     borderBottomColor: "rgba(20,20,24,0.38)",
   },
   highlighted: {
-    borderColor: "#ffe18a",
-    borderWidth: 2,
-    shadowColor: theme.gold,
-    shadowOpacity: 1,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 0 },
-    transform: [{ perspective: 500 }, { translateY: -7 }, { scale: 1.06 }, { rotateX: "2deg" }],
+    transform: [{ perspective: 500 }, { translateY: -8 }, { scale: 1.03 }, { rotateX: "2deg" }],
   },
   back: { alignItems: "center", justifyContent: "center", borderColor: "#d3a846", borderWidth: 1.5 },
   backImage: { width: "100%", height: "100%" },
@@ -134,10 +126,6 @@ const styles = StyleSheet.create({
     position: "absolute", left: 1, right: 1, top: 1, height: "34%",
     borderTopLeftRadius: 7, borderTopRightRadius: 7,
     backgroundColor: "rgba(255,255,255,0.36)",
-  },
-  matchGem: {
-    position: "absolute", top: 3, right: 3, width: 5, height: 5, borderRadius: 3,
-    shadowColor: "#fff", shadowOpacity: 1, shadowRadius: 3,
   },
   index: { position: "absolute", top: 1, left: 3, alignItems: "center", zIndex: 2 },
   cornerRank: {

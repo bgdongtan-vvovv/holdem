@@ -1,8 +1,13 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Animated, Easing, ImageBackground, type LayoutChangeEvent, StyleSheet, Text, View } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
+import { Animated, Easing, Image, type LayoutChangeEvent, StyleSheet, Text, View } from "react-native";
 import type { Card, HandRank, HandState } from "@holdem/poker-engine";
-import { compareHands, evaluateHand, HAND_CATEGORY_NAMES, totalPot } from "@holdem/poker-engine";
+import {
+  compareHands,
+  evaluateHand,
+  HAND_CATEGORY_NAMES,
+  HandCategory,
+  totalPot,
+} from "@holdem/poker-engine";
 import { theme } from "../theme";
 import { PlayingCard } from "./PlayingCard";
 import { TableSeat } from "./TableSeat";
@@ -10,33 +15,38 @@ import { ChipPile } from "./Chip";
 import { AnimatedAppear } from "./AnimatedAppear";
 import type { SeatMeta } from "../game/useLocalTable";
 import { formatGameMoney } from "../formatMoney";
+import { playSfx } from "../sound/sfx";
+
+const BOARD_REVEAL_DELAY_MS = 500;
+const POT_CENTER_X = 0.5;
+const POT_CENTER_Y = 0.43;
 
 // 좌석/베팅칩/딜러버튼 앵커 (테이블 영역 대비 %). hero = 바텀 센터.
 const SEAT_POS = [
-  { left: "50%", top: "90%" }, // 0 hero
-  { left: "13%", top: "70%" }, // 1
-  { left: "8%", top: "34%" }, // 2
-  { left: "50%", top: "6%" }, // 3
-  { left: "92%", top: "34%" }, // 4
-  { left: "87%", top: "70%" }, // 5
+  { left: "50%", top: "82%" }, // 0 hero
+  { left: "12%", top: "69%" }, // 1 lower-left
+  { left: "8%", top: "38%" }, // 2 upper-left
+  { left: "50%", top: "13%" }, // 3 top
+  { left: "92%", top: "38%" }, // 4 upper-right
+  { left: "88%", top: "69%" }, // 5 lower-right
 ] as const;
 
 const BET_POS = [
   { left: "50%", top: "70%" },
-  { left: "31%", top: "61%" },
-  { left: "28%", top: "42%" },
-  { left: "50%", top: "24%" },
-  { left: "72%", top: "42%" },
-  { left: "69%", top: "61%" },
+  { left: "31%", top: "67%" },
+  { left: "28%", top: "40%" },
+  { left: "50%", top: "25%" },
+  { left: "72%", top: "40%" },
+  { left: "69%", top: "67%" },
 ] as const;
 
 const DEALER_POS = [
-  { left: "63%", top: "80%" },
-  { left: "26%", top: "64%" },
-  { left: "22%", top: "40%" },
-  { left: "62%", top: "17%" },
-  { left: "78%", top: "40%" },
-  { left: "74%", top: "64%" },
+  { left: "64%", top: "76%" },
+  { left: "25%", top: "66%" },
+  { left: "23%", top: "36%" },
+  { left: "63%", top: "19%" },
+  { left: "77%", top: "36%" },
+  { left: "75%", top: "66%" },
 ] as const;
 
 const DEAL_FROM = [
@@ -54,12 +64,14 @@ export function PokerTable({
   humanSeat,
   buttonIndex,
   reveal,
+  playerAvatarIndex,
 }: {
   state: HandState;
   seatsMeta: SeatMeta[];
   humanSeat: number;
   buttonIndex: number;
   reveal: boolean;
+  playerAvatarIndex: number;
 }) {
   const [tableSize, setTableSize] = useState({ width: 0, height: 0 });
   const [displayPot, setDisplayPot] = useState(0);
@@ -82,10 +94,17 @@ export function PokerTable({
       ? (state.result?.awards ?? []).filter((award) => award.amount > 0)
       : [];
   const winners = new Set<number>(winnerAwards.map((award) => award.seat));
-  const human = state.players[humanSeat];
-  const visibleCards = human ? [...human.holeCards, ...state.board] : state.board;
+  const featuredSeat = winnerAwards[0]?.seat ?? humanSeat;
+  const featuredPlayer = state.players[featuredSeat];
+  const visibleCards = featuredPlayer
+    ? [...featuredPlayer.holeCards, ...state.board]
+    : state.board;
   const bestFive = visibleCards.length >= 5 ? findBestFive(visibleCards) : null;
-  const matchedCards = new Set(bestFive?.cards.map(cardKey) ?? []);
+  const showMadeHand =
+    state.street === "complete" &&
+    bestFive !== null &&
+    bestFive.rank.category !== HandCategory.HighCard;
+  const matchedCards = new Set(showMadeHand ? madeCards(bestFive).map(cardKey) : []);
   const currentPot = totalPot(state);
 
   useEffect(() => {
@@ -127,51 +146,56 @@ export function PokerTable({
       style={styles.area}
       onLayout={(event: LayoutChangeEvent) => setTableSize(event.nativeEvent.layout)}
     >
-      <ImageBackground
-        source={require("../../assets/images/poker-table-3d.png")}
-        resizeMode="stretch"
-        style={styles.tableImage}
-        imageStyle={styles.tableImageAsset}
-      >
-        <LinearGradient
-          colors={["rgba(1,5,14,0.35)", "rgba(8,31,70,0.02)", "rgba(1,5,14,0.42)"]}
-          style={styles.tableLight}
-        >
+      <View style={styles.tableImage}>
+        <Image
+          source={require("../../assets/images/poker-table-portrait-v4.png")}
+          resizeMode="stretch"
+          style={styles.tableBackground}
+        />
+        <View style={styles.tableLight}>
             {/* 센터 브랜딩 + 커뮤니티 카드 + 팟 */}
             <Text style={styles.brand}>HOLD'EM</Text>
             <Text style={styles.stakes}>
               {formatGameMoney(state.smallBlind)} / {formatGameMoney(state.bigBlind)}
             </Text>
-            {state.board.length > 0 && (
-              <View style={styles.board}>
-                {state.board.map((c, i) => (
-                  <AnimatedAppear
-                    key={`${c.rank}${c.suit}`}
-                    delay={i * 230}
-                    translateX={-190 - i * 18}
-                    translateY={-12}
-                    rotateFrom="-14deg"
-                    duration={920}
-                  >
-                    <PlayingCard card={c} size="md" highlighted={matchedCards.has(cardKey(c))} />
-                  </AnimatedAppear>
-                ))}
-              </View>
-            )}
-            {bestFive && (
-              <View style={styles.handBadge}>
-                <View style={styles.handBadgeDot} />
-                <Text style={styles.handBadgeText}>{HAND_CATEGORY_NAMES[bestFive.rank.category]}</Text>
-              </View>
-            )}
             {displayPot > 0 && state.street !== "complete" && (
               <View style={styles.potPill}>
                 <ChipPile amount={displayPot} chipSize={25} />
                 <Text style={styles.potText}>팟 {formatGameMoney(displayPot)}</Text>
               </View>
             )}
-        </LinearGradient>
-      </ImageBackground>
+            <View style={styles.board}>
+              {state.board.map((card, i) => (
+                <AnimatedAppear
+                  key={cardKey(card)}
+                  style={[styles.boardCard, { left: i * 66 }]}
+                  delay={BOARD_REVEAL_DELAY_MS + (i < 3 ? i : 0) * 230}
+                  translateX={-190 - i * 18}
+                  translateY={-12}
+                  rotateFrom="-14deg"
+                  duration={920}
+                >
+                  <PlayingCard
+                    card={card}
+                    size="lg"
+                    highlighted={matchedCards.has(cardKey(card))}
+                  />
+                </AnimatedAppear>
+              ))}
+            </View>
+            {showMadeHand && (
+              <View style={styles.handBadge}>
+                <View style={styles.handBadgeDot} />
+                <Text style={styles.handBadgeText}>{HAND_CATEGORY_NAMES[bestFive.rank.category]}</Text>
+              </View>
+            )}
+        </View>
+      </View>
+
+      <View style={styles.sideControls} pointerEvents="none">
+        <View style={styles.sideButton}><Text style={styles.sideButtonText}>♣</Text></View>
+        <View style={styles.sideButton}><Text style={styles.sideButtonText}>⚙</Text></View>
+      </View>
 
       {/* 딜러 버튼 */}
       <View style={[styles.dealer, anchor(DEALER_POS[visualOf.get(buttonIndex) ?? 0]!)]}>
@@ -191,10 +215,11 @@ export function PokerTable({
                 isActive={state.actingIndex === p.seat}
                 revealCards={reveal}
                 isWinner={winners.has(p.seat)}
-                matchedCards={isHuman ? matchedCards : undefined}
+                matchedCards={p.seat === featuredSeat ? matchedCards : undefined}
                 dealIndex={vi}
                 playerCount={n}
                 dealOffset={DEAL_FROM[vi]!}
+                avatarIndex={isHuman ? playerAvatarIndex : undefined}
               />
             </View>
           </React.Fragment>
@@ -237,16 +262,19 @@ function BetToPot({
   const start = BET_POS[visualSeat]!;
   const startX = (Number.parseFloat(start.left) / 100) * tableSize.width;
   const startY = (Number.parseFloat(start.top) / 100) * tableSize.height;
-  const targetX = tableSize.width / 2;
-  const targetY = tableSize.height * 0.58;
+  const targetX = tableSize.width * POT_CENTER_X;
+  const targetY = tableSize.height * POT_CENTER_Y;
 
   useEffect(() => {
+    playSfx("chips_drop");
     Animated.timing(progress, {
       toValue: 1,
       duration: 1050,
       easing: Easing.inOut(Easing.cubic),
       useNativeDriver: false,
     }).start();
+    const chipSound = setTimeout(() => playSfx("chips_collect"), 1000);
+    return () => clearTimeout(chipSound);
   }, [progress]);
 
   return (
@@ -288,8 +316,8 @@ function PotToWinner({
   const target = SEAT_POS[visualSeat]!;
   const targetX = (Number.parseFloat(target.left) / 100) * tableSize.width;
   const targetY = (Number.parseFloat(target.top) / 100) * tableSize.height;
-  const centerX = tableSize.width / 2;
-  const centerY = tableSize.height / 2;
+  const centerX = tableSize.width * POT_CENTER_X;
+  const centerY = tableSize.height * POT_CENTER_Y;
 
   useEffect(() => {
     Animated.timing(progress, {
@@ -354,6 +382,25 @@ function findBestFive(cards: Card[]): { cards: Card[]; rank: HandRank } {
   return { cards: bestCards, rank: bestRank };
 }
 
+function madeCards(hand: { cards: Card[]; rank: HandRank }): Card[] {
+  const [primary, secondary] = hand.rank.tiebreak;
+  switch (hand.rank.category) {
+    case HandCategory.Pair:
+    case HandCategory.ThreeOfAKind:
+    case HandCategory.FourOfAKind:
+      return hand.cards.filter((card) => card.rank === primary);
+    case HandCategory.TwoPair:
+    case HandCategory.FullHouse:
+      return hand.cards.filter((card) => card.rank === primary || card.rank === secondary);
+    case HandCategory.Straight:
+    case HandCategory.Flush:
+    case HandCategory.StraightFlush:
+      return hand.cards;
+    default:
+      return [];
+  }
+}
+
 // 앵커를 중심 정렬(대략)하기 위한 절대 위치 스타일
 function anchor(pos: { left: string; top: string }) {
   return { left: pos.left as unknown as number, top: pos.top as unknown as number };
@@ -366,10 +413,10 @@ const styles = StyleSheet.create({
   },
   tableImage: {
     position: "absolute",
-    left: "-1%",
-    right: "-1%",
-    top: "2%",
-    bottom: "2%",
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
     alignItems: "center",
     justifyContent: "center",
     shadowColor: "#000",
@@ -377,12 +424,23 @@ const styles = StyleSheet.create({
     shadowRadius: 24,
     shadowOffset: { width: 0, height: 12 },
   },
-  tableImageAsset: { borderRadius: 32 },
+  tableBackground: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    top: 0,
+    bottom: 0,
+    width: "100%",
+    height: "100%",
+    borderRadius: 24,
+    transform: [{ scale: 1.09 }],
+  },
   tableLight: {
-    width: "68%",
-    height: "54%",
+    width: "76%",
+    height: "48%",
     alignItems: "center",
     justifyContent: "center",
+    transform: [{ translateY: -16 }],
   },
   brand: {
     color: "rgba(221,185,98,0.22)",
@@ -393,7 +451,8 @@ const styles = StyleSheet.create({
     textShadowRadius: 4,
   },
   stakes: { color: "rgba(255,255,255,0.5)", fontSize: 20, fontWeight: "800", marginTop: 2 },
-  board: { flexDirection: "row", marginTop: 13, gap: 0, transform: [{ translateY: -20 }] },
+  board: { position: "relative", marginTop: 6, width: 330, height: 100 },
+  boardCard: { position: "absolute", top: 0, width: 66, alignItems: "center" },
   handBadge: {
     flexDirection: "row", alignItems: "center", marginTop: 8,
     paddingHorizontal: 10, paddingVertical: 3, borderRadius: 12,
@@ -408,7 +467,7 @@ const styles = StyleSheet.create({
   potPill: {
     flexDirection: "row",
     alignItems: "center",
-    marginTop: 0,
+    marginTop: 8,
     backgroundColor: "rgba(0,0,0,0.48)",
     minHeight: 48,
     paddingHorizontal: 14,
@@ -421,9 +480,9 @@ const styles = StyleSheet.create({
 
   seat: {
     position: "absolute",
-    width: 96,
-    marginLeft: -48,
-    marginTop: -55,
+    width: 118,
+    marginLeft: -59,
+    marginTop: -62,
     alignItems: "center",
   },
   betFlight: { position: "absolute", zIndex: 24, alignItems: "center" },
@@ -433,6 +492,17 @@ const styles = StyleSheet.create({
     borderRadius: 9, overflow: "hidden", marginTop: -2,
   },
   flyingPot: { position: "absolute", zIndex: 30 },
+  sideControls: {
+    position: "absolute", left: 14, bottom: 28, gap: 10, zIndex: 8,
+  },
+  sideButton: {
+    width: 46, height: 46, borderRadius: 23,
+    alignItems: "center", justifyContent: "center",
+    backgroundColor: "rgba(42,38,29,0.92)", borderWidth: 2,
+    borderColor: "rgba(219,184,101,0.72)",
+    shadowColor: "#000", shadowOpacity: 0.7, shadowRadius: 5,
+  },
+  sideButtonText: { color: "#e8ddb9", fontSize: 23, fontWeight: "900" },
 
   dealer: {
     position: "absolute",

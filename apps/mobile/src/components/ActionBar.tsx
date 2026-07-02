@@ -5,6 +5,7 @@ import type { Action, HandState, LegalActions } from "@holdem/poker-engine";
 import { totalPot } from "@holdem/poker-engine";
 import { theme } from "../theme";
 import { formatGameMoney } from "../formatMoney";
+import { playSfx } from "../sound/sfx";
 
 function GradientButton({
   colors,
@@ -18,7 +19,13 @@ function GradientButton({
   onPress: () => void;
 }) {
   return (
-    <Pressable style={styles.btnWrap} onPress={onPress}>
+    <Pressable
+      style={styles.btnWrap}
+      onPress={() => {
+        playSfx("ui_click");
+        onPress();
+      }}
+    >
       <LinearGradient colors={colors} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={styles.btn}>
         <Text style={[styles.btnText, { color: textColor }]}>{label}</Text>
       </LinearGradient>
@@ -55,22 +62,26 @@ export function ActionBar({
   const presets = buildPresets(legal, pot);
   const clamp = (v: number) => Math.max(legal.minRaiseTo, Math.min(legal.maxRaiseTo, v));
   const fmt = formatGameMoney;
+  const click = (action: () => void) => {
+    playSfx("ui_click");
+    action();
+  };
 
   return (
     <View style={styles.wrap}>
       {legal.canRaise && (
         <View style={styles.raiseRow}>
-          <Pressable style={styles.step} onPress={() => setRaiseTo((v) => clamp(v - state.bigBlind))}>
+          <Pressable style={styles.step} onPress={() => click(() => setRaiseTo((v) => clamp(v - state.bigBlind)))}>
             <Text style={styles.stepText}>−</Text>
           </Pressable>
           <View style={styles.raiseAmt}>
             <Text style={styles.raiseAmtText}>{fmt(raiseTo)}</Text>
           </View>
-          <Pressable style={styles.step} onPress={() => setRaiseTo((v) => clamp(v + state.bigBlind))}>
+          <Pressable style={styles.step} onPress={() => click(() => setRaiseTo((v) => clamp(v + state.bigBlind)))}>
             <Text style={styles.stepText}>＋</Text>
           </Pressable>
           {presets.map((p) => (
-            <Pressable key={p.label} style={styles.preset} onPress={() => setRaiseTo(clamp(p.to))}>
+            <Pressable key={p.label} style={styles.preset} onPress={() => click(() => setRaiseTo(clamp(p.to)))}>
               <Text style={styles.presetText}>{p.label}</Text>
             </Pressable>
           ))}

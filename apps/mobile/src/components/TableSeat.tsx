@@ -1,4 +1,4 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Animated, Easing, StyleSheet, Text, View } from "react-native";
 import type { PlayerState } from "@holdem/poker-engine";
 import type { Card } from "@holdem/poker-engine";
@@ -7,6 +7,7 @@ import { Avatar } from "./Avatar";
 import { PlayingCard } from "./PlayingCard";
 import { AnimatedAppear } from "./AnimatedAppear";
 import { formatGameMoney } from "../formatMoney";
+import { playSfx } from "../sound/sfx";
 
 export function TableSeat({
   player,
@@ -18,6 +19,7 @@ export function TableSeat({
   dealIndex,
   playerCount,
   dealOffset,
+  avatarIndex,
 }: {
   player: PlayerState;
   isHuman: boolean;
@@ -28,45 +30,17 @@ export function TableSeat({
   dealIndex: number;
   playerCount: number;
   dealOffset: { x: number; y: number };
+  avatarIndex?: number;
 }) {
   const folded = player.status === "folded";
   const out = player.status === "out";
   const showCards = isHuman || revealCards;
   const hasCards = player.holeCards.length > 0 && !folded && !out;
-  const avatarSize = isHuman ? 82 : 68;
-
-  // 활성 좌석 펄스
-  const pulse = useRef(new Animated.Value(0)).current;
-  useEffect(() => {
-    if (!isActive) return;
-    const loop = Animated.loop(
-      Animated.sequence([
-        Animated.timing(pulse, { toValue: 1, duration: 700, useNativeDriver: false }),
-        Animated.timing(pulse, { toValue: 0, duration: 700, useNativeDriver: false }),
-      ]),
-    );
-    loop.start();
-    return () => loop.stop();
-  }, [isActive, pulse]);
+  const avatarSize = isHuman ? 96 : 82;
+  const cardsOnLeft = dealIndex === 3 || dealIndex === 4 || dealIndex === 5;
 
   return (
     <View style={[styles.wrap, folded && styles.folded]}>
-      {/* 활성 펄스 링 */}
-      {isActive && (
-        <Animated.View
-          style={[
-            styles.pulseRing,
-            {
-              width: avatarSize + 16,
-              height: avatarSize + 16,
-              borderRadius: (avatarSize + 16) / 2,
-              opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.25, 0.85] }),
-              transform: [{ scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.95, 1.12] }) }],
-            },
-          ]}
-        />
-      )}
-
       {/* 승자 배지 */}
       {isWinner && (
         <AnimatedAppear style={styles.winBadge} translateY={-10} duration={520}>
@@ -76,12 +50,21 @@ export function TableSeat({
 
       {/* 홀카드 */}
       {hasCards && (
-        <View style={[styles.cards, isHuman ? styles.cardsHuman : styles.cardsOther]}>
+        <View
+          style={[
+            styles.cards,
+            isHuman ? styles.cardsHuman : styles.cardsOther,
+            cardsOnLeft ? styles.cardsLeft : styles.cardsRight,
+          ]}
+        >
           {player.holeCards.map((c, i) => (
             <DealtCard
               key={cardKey(c)}
               delay={(i * playerCount + dealIndex) * 270}
               from={dealOffset}
+              overlap={i === 0 ? 0 : isHuman ? -12 : -29}
+              settleY={!isHuman && i === 1 ? 3 : 0}
+              rotateTo={!isHuman ? (i === 0 ? "-5deg" : "4deg") : "0deg"}
             >
               <PlayingCard
                 card={c}
@@ -95,7 +78,7 @@ export function TableSeat({
       )}
 
       <View style={[styles.avatarLayer, isWinner ? styles.avatarWin : undefined]}>
-        <Avatar seat={player.seat} size={avatarSize} />
+        <Avatar seat={player.seat} avatarIndex={avatarIndex} size={avatarSize} />
       </View>
 
       <View style={[styles.plate, isActive && styles.plateActive, isWinner && styles.plateWin]}>
@@ -117,31 +100,50 @@ function DealtCard({
   children,
   delay,
   from,
+  overlap,
+  settleY,
+  rotateTo,
 }: {
   children: React.ReactNode;
   delay: number;
   from: { x: number; y: number };
+  overlap: number;
+  settleY: number;
+  rotateTo: string;
 }) {
+  const [visible, setVisible] = useState(false);
   const progress = useRef(new Animated.Value(0)).current;
+
   useEffect(() => {
+    const revealTimer = setTimeout(() => {
+      playSfx("card_flip");
+      setVisible(true);
+    }, delay);
+    return () => clearTimeout(revealTimer);
+  }, [delay]);
+
+  useEffect(() => {
+    if (!visible) return;
     Animated.timing(progress, {
       toValue: 1,
-      delay,
-      duration: 980,
+      duration: 760,
       easing: Easing.out(Easing.cubic),
       useNativeDriver: false,
     }).start();
-  }, [delay, progress]);
+  }, [progress, visible]);
+
+  if (!visible) return null;
 
   return (
     <Animated.View
       style={{
+        marginLeft: overlap,
         opacity: progress,
         transform: [
           { translateX: progress.interpolate({ inputRange: [0, 1], outputRange: [from.x, 0] }) },
-          { translateY: progress.interpolate({ inputRange: [0, 1], outputRange: [from.y, 0] }) },
+          { translateY: progress.interpolate({ inputRange: [0, 1], outputRange: [from.y, settleY] }) },
           { scale: progress.interpolate({ inputRange: [0, 1], outputRange: [0.35, 1] }) },
-          { rotate: progress.interpolate({ inputRange: [0, 1], outputRange: ["-18deg", "0deg"] }) },
+          { rotate: progress.interpolate({ inputRange: [0, 1], outputRange: ["-18deg", rotateTo] }) },
         ],
       }}
     >
@@ -155,14 +157,8 @@ function cardKey(card: Card): string {
 }
 
 const styles = StyleSheet.create({
-  wrap: { alignItems: "center", width: 110 },
+  wrap: { alignItems: "center", width: 118 },
   folded: { opacity: 0.45 },
-  pulseRing: {
-    position: "absolute",
-    top: -8,
-    borderWidth: 3,
-    borderColor: theme.gold,
-  },
   winBadge: {
     position: "absolute",
     top: -18,
@@ -182,25 +178,27 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 0 },
   },
   avatarLayer: { zIndex: 4 },
-  cards: { position: "absolute", flexDirection: "row", zIndex: 3 },
-  cardsOther: { top: 6, left: 82 },
-  cardsHuman: { top: 3, left: 96 },
+  cards: { position: "absolute", flexDirection: "row", zIndex: 3, top: 8 },
+  cardsOther: { width: 47 },
+  cardsHuman: { top: 10, width: 84 },
+  cardsRight: { left: 91 },
+  cardsLeft: { right: 91 },
   plate: {
-    marginTop: -10,
-    minWidth: 84,
+    marginTop: -15,
+    minWidth: 104,
     backgroundColor: theme.namePlate,
-    borderRadius: 8,
-    paddingHorizontal: 8,
-    paddingTop: 8,
-    paddingBottom: 4,
+    borderRadius: 6,
+    paddingHorizontal: 9,
+    paddingTop: 9,
+    paddingBottom: 5,
     alignItems: "center",
     borderWidth: 1.5,
     borderColor: "transparent",
   },
   plateActive: { borderColor: theme.namePlateActive, shadowColor: theme.gold, shadowOpacity: 0.9, shadowRadius: 8 },
   plateWin: { borderColor: theme.gold, backgroundColor: "rgba(60,45,10,0.92)" },
-  name: { color: theme.text, fontWeight: "700", fontSize: 12, maxWidth: 88 },
-  stack: { color: theme.gold, fontWeight: "800", fontSize: 13 },
+  name: { color: theme.text, fontWeight: "800", fontSize: 13, maxWidth: 102 },
+  stack: { color: theme.gold, fontWeight: "900", fontSize: 15 },
   timerTrack: {
     marginTop: 3,
     width: "100%",

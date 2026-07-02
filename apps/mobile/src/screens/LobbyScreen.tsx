@@ -2,8 +2,18 @@ import React from "react";
 import { ImageBackground, Pressable, SafeAreaView, ScrollView, StyleSheet, Text, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { theme } from "../theme";
+import { Avatar, AVATARS } from "../components/Avatar";
+import { playSfx } from "../sound/sfx";
 
-export function LobbyScreen({ onStartGame }: { onStartGame: () => void }) {
+export function LobbyScreen({
+  onStartGame,
+  playerAvatarIndex,
+  onAvatarChange,
+}: {
+  onStartGame: () => void;
+  playerAvatarIndex: number;
+  onAvatarChange: (index: number) => void;
+}) {
   return (
     <SafeAreaView style={styles.root}>
       <StatusBar style="light" />
@@ -25,9 +35,16 @@ export function LobbyScreen({ onStartGame }: { onStartGame: () => void }) {
 
       {/* 프로필 */}
       <View style={styles.profile}>
-        <View style={styles.avatar}>
-          <Text style={{ fontSize: 30 }}>🧑</Text>
-        </View>
+        <Pressable
+          style={styles.avatar}
+          onPress={() => {
+            playSfx("ui_click");
+            onAvatarChange((playerAvatarIndex + 1) % AVATARS.length);
+          }}
+        >
+          <Avatar seat={0} avatarIndex={playerAvatarIndex} size={64} />
+          <Text style={styles.avatarChange}>변경</Text>
+        </Pressable>
         <View style={{ flex: 1, marginLeft: 12 }}>
           <Text style={styles.pname}>데이비드3323</Text>
           <View style={styles.badges}>
@@ -155,8 +172,12 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(15,14,13,0.82)",
   },
   avatar: {
-    width: 54, height: 54, borderRadius: 27, backgroundColor: "#2b3350",
-    alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: theme.railHi,
+    width: 64, height: 64, alignItems: "center", justifyContent: "center",
+  },
+  avatarChange: {
+    position: "absolute", bottom: -4, color: theme.gold, fontSize: 9, fontWeight: "900",
+    backgroundColor: "rgba(0,0,0,0.72)", paddingHorizontal: 5, paddingVertical: 1,
+    borderRadius: 6, overflow: "hidden",
   },
   pname: { color: theme.text, fontWeight: "800", fontSize: 16 },
   badges: { flexDirection: "row", gap: 6, marginTop: 4 },

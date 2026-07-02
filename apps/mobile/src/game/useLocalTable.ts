@@ -17,14 +17,14 @@ import { decideBotAction } from "./bot";
 import { initSfx, playSfx, type Sfx } from "../sound/sfx";
 
 /** 액션 타입 → 효과음. */
-function actionSfx(type: Action["type"]): Sfx {
+function actionSfx(type: Action["type"], voice: "male" | "female" = "male"): Sfx {
   switch (type) {
     case "fold":
-      return "fold";
+      return voice === "female" ? "fold_female" : "fold";
     case "check":
-      return "check";
+      return voice === "female" ? "check_female" : "check";
     case "call":
-      return "call";
+      return voice === "female" ? "call_female" : "call";
     case "bet":
       return "bet";
     case "raise":
@@ -37,18 +37,25 @@ function actionSfx(type: Action["type"]): Sfx {
 export interface SeatMeta {
   id: string;
   isBot: boolean;
+  voice: "male" | "female";
 }
 
 export interface TableOptions {
-  seats: { id: string; isBot: boolean; stack: number }[];
+  seats: { id: string; isBot: boolean; stack: number; voice?: "male" | "female" }[];
   smallBlind: number;
   bigBlind: number;
 }
 
 const BOT_DELAY_MS = 900;
+const INITIAL_DEAL_ANIMATION_MS = 4100;
+const BOARD_AFTER_BET_PAUSE_MS = 500;
+const FLOP_ANIMATION_MS = BOARD_AFTER_BET_PAUSE_MS + 1520;
+const SINGLE_BOARD_CARD_ANIMATION_MS = BOARD_AFTER_BET_PAUSE_MS + 1050;
 
 export function useLocalTable(options: TableOptions) {
-  const seatsMeta = useRef<SeatMeta[]>(options.seats.map((s) => ({ id: s.id, isBot: s.isBot })));
+  const seatsMeta = useRef<SeatMeta[]>(
+    options.seats.map((s) => ({ id: s.id, isBot: s.isBot, voice: s.voice ?? "male" })),
+  );
   const stacks = useRef<number[]>(options.seats.map((s) => s.stack));
   const buttonIndex = useRef<number>(0);
   const [state, setState] = useState<HandState>(() =>
@@ -59,13 +66,35 @@ export function useLocalTable(options: TableOptions) {
       bigBlind: options.bigBlind,
     }),
   );
+  const [animationLocked, setAnimationLocked] = useState(true);
+  const animationLockRef = useRef(true);
+  const animationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const lockFor = useCallback((duration: number) => {
+    animationLockRef.current = true;
+    setAnimationLocked(true);
+    if (animationTimer.current) clearTimeout(animationTimer.current);
+    animationTimer.current = setTimeout(() => {
+      animationLockRef.current = false;
+      setAnimationLocked(false);
+      animationTimer.current = null;
+    }, duration);
+  }, []);
 
   const humanSeat = 0;
   const legal: LegalActions | null =
-    !isHandOver(state) && state.actingIndex === humanSeat ? legalActions(state) : null;
+    !animationLocked && !isHandOver(state) && state.actingIndex === humanSeat
+      ? legalActions(state)
+      : null;
 
   const act = useCallback((action: Action) => {
-    playSfx(actionSfx(action.type));
+    if (animationLockRef.current) return;
+    const voice = seatsMeta.current[humanSeat]?.voice ?? "male";
+    if (action.type === "fold") {
+      setTimeout(() => playSfx(actionSfx("fold", voice)), 120);
+    } else {
+      playSfx(actionSfx(action.type, voice));
+    }
     setState((s) => {
       if (isHandOver(s) || s.actingIndex !== humanSeat) return s;
       return applyAction(s, action);
@@ -74,20 +103,29 @@ export function useLocalTable(options: TableOptions) {
 
   // 사운드 초기화 + 첫 핸드 셔플/딜 사운드
   useEffect(() => {
+    lockFor(INITIAL_DEAL_ANIMATION_MS);
     initSfx().then(() => {
       playSfx("card_shuffle");
-      setTimeout(() => playSfx("card_deal"), 350);
     });
-  }, []);
+    return () => {
+      if (animationTimer.current) clearTimeout(animationTimer.current);
+    };
+  }, [lockFor]);
 
   // 봇 자동 진행
   useEffect(() => {
-    if (isHandOver(state)) return;
+    if (animationLocked || isHandOver(state)) return;
     const actor = seatsMeta.current[state.actingIndex];
     if (!actor?.isBot) return;
     const botAction = decideBotAction(state);
     const t = setTimeout(() => {
-      playSfx(actionSfx(botAction.type));
+      if (animationLockRef.current) return;
+      const voice = seatsMeta.current[state.actingIndex]?.voice ?? "male";
+      if (botAction.type === "fold") {
+        setTimeout(() => playSfx(actionSfx("fold", voice)), 120);
+      } else {
+        playSfx(actionSfx(botAction.type, voice));
+      }
       setState((s) => {
         if (isHandOver(s)) return s;
         const meta = seatsMeta.current[s.actingIndex];
@@ -96,14 +134,23 @@ export function useLocalTable(options: TableOptions) {
       });
     }, BOT_DELAY_MS);
     return () => clearTimeout(t);
-  }, [state]);
+  }, [animationLocked, lockFor, state]);
 
   // 상태 전이 기반 사운드 (커뮤니티 카드 딜 / 내 차례 / 승리) + 스택 저장
   const prev = useRef<HandState | null>(null);
   useEffect(() => {
     const p = prev.current;
     if (p) {
-      if (state.board.length > p.board.length) playSfx("card_deal");
+      if (state.board.length > p.board.length) {
+        const opened = state.board.length - p.board.length;
+        lockFor(opened >= 3 ? FLOP_ANIMATION_MS : SINGLE_BOARD_CARD_ANIMATION_MS);
+        for (let i = 0; i < opened; i++) {
+          setTimeout(
+            () => playSfx("card_flip"),
+            BOARD_AFTER_BET_PAUSE_MS + (opened >= 3 ? i * 230 : 0),
+          );
+        }
+      }
       if (state.actingIndex === humanSeat && p.actingIndex !== humanSeat && !isHandOver(state)) {
         playSfx("your_turn");
       }
@@ -121,7 +168,7 @@ export function useLocalTable(options: TableOptions) {
     if (isHandOver(state)) {
       stacks.current = state.players.map((pl) => pl.stack);
     }
-  }, [state]);
+  }, [lockFor, state]);
 
   const nextHand = useCallback(() => {
     // 스택 0 인 좌석은 이번 데모에서 재바이인(간단화)
@@ -132,8 +179,8 @@ export function useLocalTable(options: TableOptions) {
     }));
     // 버튼 이동
     buttonIndex.current = (buttonIndex.current + 1) % seatConfigs.length;
+    lockFor(INITIAL_DEAL_ANIMATION_MS);
     playSfx("card_shuffle");
-    setTimeout(() => playSfx("card_deal"), 350);
     setState(
       startHand({
         seats: seatConfigs,
@@ -142,7 +189,7 @@ export function useLocalTable(options: TableOptions) {
         bigBlind: options.bigBlind,
       }),
     );
-  }, [options.bigBlind, options.smallBlind]);
+  }, [lockFor, options.bigBlind, options.smallBlind]);
 
   return {
     state,
@@ -153,5 +200,6 @@ export function useLocalTable(options: TableOptions) {
     act,
     nextHand,
     handOver: isHandOver(state),
+    animationLocked,
   };
 }

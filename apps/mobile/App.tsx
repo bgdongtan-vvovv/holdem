@@ -9,6 +9,7 @@ type Screen = "login" | "lobby" | "game";
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>("login");
+  const [playerAvatarIndex, setPlayerAvatarIndex] = useState(0);
 
   useEffect(() => {
     void initSfx();
@@ -31,6 +32,8 @@ export default function App() {
     case "lobby":
       return (
         <LobbyScreen
+          playerAvatarIndex={playerAvatarIndex}
+          onAvatarChange={setPlayerAvatarIndex}
           onStartGame={() => {
             playSfx("ui_confirm");
             void playMusic("table");
@@ -41,6 +44,7 @@ export default function App() {
     case "game":
       return (
         <GameScreen
+          playerAvatarIndex={playerAvatarIndex}
           onExit={() => {
             playSfx("ui_back");
             void playMusic("lobby");
