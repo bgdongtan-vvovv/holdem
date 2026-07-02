@@ -1,5 +1,5 @@
 import React from "react";
-import { ImageBackground, StyleSheet, Text, View } from "react-native";
+import { Image, StyleSheet, Text, View } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import type { Card } from "@holdem/poker-engine";
 import { theme } from "../theme";
@@ -49,20 +49,13 @@ export function PlayingCard({
   if (hidden || !card) {
     return (
       <View
-        style={[
-          styles.card,
-          styles.cardDepth,
-          { width: d.w, height: d.h, borderRadius: d.radius },
-          styles.back,
-        ]}
+        style={{ width: d.w, height: d.h, margin: 2 }}
       >
-        <ImageBackground
+        <Image
           source={require("../../assets/images/card-back-luxury.png")}
-          resizeMode="cover"
-          style={styles.backImage}
-          imageStyle={{ borderRadius: Math.max(2, d.radius - 2) }}
+          resizeMode="contain"
+          style={{ width: d.w, height: d.h }}
         />
-        <View style={styles.edgeShine} />
       </View>
     );
   }
@@ -114,13 +107,6 @@ const styles = StyleSheet.create({
   },
   highlighted: {
     transform: [{ perspective: 500 }, { translateY: -8 }, { scale: 1.03 }, { rotateX: "2deg" }],
-  },
-  back: { alignItems: "center", justifyContent: "center", borderColor: "#d3a846", borderWidth: 1.5 },
-  backImage: { width: "100%", height: "100%" },
-  edgeShine: {
-    position: "absolute", left: 2, right: 2, top: 2, height: "18%",
-    borderTopLeftRadius: 8, borderTopRightRadius: 8,
-    backgroundColor: "rgba(255,255,255,0.12)",
   },
   faceGloss: {
     position: "absolute", left: 1, right: 1, top: 1, height: "34%",

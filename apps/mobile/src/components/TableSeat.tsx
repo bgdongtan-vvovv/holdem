@@ -178,9 +178,9 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 0 },
   },
   avatarLayer: { zIndex: 4 },
-  cards: { position: "absolute", flexDirection: "row", zIndex: 3, top: 8 },
+  cards: { position: "absolute", flexDirection: "row", zIndex: 3, top: 0 },
   cardsOther: { width: 47 },
-  cardsHuman: { top: 10, width: 84 },
+  cardsHuman: { top: 2, width: 84 },
   cardsRight: { left: 91 },
   cardsLeft: { right: 91 },
   plate: {
@@ -197,7 +197,7 @@ const styles = StyleSheet.create({
   },
   plateActive: { borderColor: theme.namePlateActive, shadowColor: theme.gold, shadowOpacity: 0.9, shadowRadius: 8 },
   plateWin: { borderColor: theme.gold, backgroundColor: "rgba(60,45,10,0.92)" },
-  name: { color: theme.text, fontWeight: "800", fontSize: 13, maxWidth: 102 },
+  name: { color: theme.text, fontWeight: "800", fontSize: 12, minWidth: 100, textAlign: "center" },
   stack: { color: theme.gold, fontWeight: "900", fontSize: 15 },
   timerTrack: {
     marginTop: 3,

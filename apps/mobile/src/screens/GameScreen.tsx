@@ -121,6 +121,10 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   topbar: {
+    position: "relative",
+    zIndex: 20,
+    elevation: 20,
+    flexShrink: 0,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
@@ -152,8 +156,9 @@ const styles = StyleSheet.create({
   },
   moveTxt: { color: "#ecd58d", fontWeight: "900", fontSize: 14 },
   footer: {
-    minHeight: 112, justifyContent: "center", backgroundColor: "#0a0b0e",
+    height: 128, flexShrink: 0, justifyContent: "center", backgroundColor: "#0a0b0e",
     borderTopWidth: 2, borderTopColor: "#363535",
+    overflow: "hidden",
   },
   waiting: { color: theme.textMuted, textAlign: "center", fontStyle: "italic", paddingVertical: 24 },
   resultWrap: { alignItems: "center", padding: 16, gap: 12 },

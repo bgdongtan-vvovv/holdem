@@ -49,6 +49,29 @@ const VOLUME: Partial<Record<Sfx, number>> = {
   ui_confirm: 0.55,
   ui_back: 0.5,
 };
+const END_SILENCE_TRIM_MS: Partial<Record<Sfx, number>> = {
+  check: 120,
+  call: 120,
+  bet: 120,
+  raise: 120,
+  allin: 120,
+  fold: 120,
+  check_female: 350,
+  call_female: 350,
+  fold_female: 350,
+};
+const ACTION_VOICES: Sfx[] = [
+  "check",
+  "check_female",
+  "call",
+  "call_female",
+  "bet",
+  "raise",
+  "allin",
+  "fold",
+  "fold_female",
+];
+const ACTION_ADVANCE_DELAY_MS = 100;
 let enabled = true;
 let initialized = false;
 
@@ -81,4 +104,36 @@ export function playSfx(name: Sfx): void {
   const s = sounds[name];
   if (!s) return;
   s.replayAsync().catch(() => {});
+}
+
+/** 효과음을 시작하고 해당 파일의 재생 시간이 끝날 때까지 기다린다. */
+export async function playSfxAndWait(name: Sfx): Promise<void> {
+  if (!enabled) return;
+  const sound = sounds[name];
+  if (!sound) return;
+
+  try {
+    if (ACTION_VOICES.includes(name)) {
+      await Promise.all(
+        ACTION_VOICES
+          .filter((voice) => voice !== name)
+          .map(async (voice) => {
+            const other = sounds[voice];
+            if (other) await other.stopAsync().catch(() => {});
+          }),
+      );
+    }
+    const status = await sound.getStatusAsync();
+    const duration =
+      status.isLoaded && typeof status.durationMillis === "number"
+        ? status.durationMillis
+        : 550;
+    await sound.replayAsync();
+    const audibleDuration = ACTION_VOICES.includes(name)
+      ? ACTION_ADVANCE_DELAY_MS
+      : Math.max(80, duration - (END_SILENCE_TRIM_MS[name] ?? 0));
+    await new Promise<void>((resolve) => setTimeout(resolve, audibleDuration));
+  } catch {
+    // 재생 실패 시 게임 진행은 막지 않는다.
+  }
 }

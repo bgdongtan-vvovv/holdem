@@ -24,11 +24,11 @@ const POT_CENTER_Y = 0.43;
 // 좌석/베팅칩/딜러버튼 앵커 (테이블 영역 대비 %). hero = 바텀 센터.
 const SEAT_POS = [
   { left: "50%", top: "82%" }, // 0 hero
-  { left: "12%", top: "69%" }, // 1 lower-left
-  { left: "8%", top: "38%" }, // 2 upper-left
+  { left: "15%", top: "69%" }, // 1 lower-left
+  { left: "15%", top: "38%" }, // 2 upper-left
   { left: "50%", top: "13%" }, // 3 top
-  { left: "92%", top: "38%" }, // 4 upper-right
-  { left: "88%", top: "69%" }, // 5 lower-right
+  { left: "85%", top: "38%" }, // 4 upper-right
+  { left: "85%", top: "69%" }, // 5 lower-right
 ] as const;
 
 const BET_POS = [
@@ -423,6 +423,7 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.9,
     shadowRadius: 24,
     shadowOffset: { width: 0, height: 12 },
+    overflow: "hidden",
   },
   tableBackground: {
     position: "absolute",

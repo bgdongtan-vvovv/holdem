@@ -14,7 +14,7 @@ import {
   type LegalActions,
 } from "@holdem/poker-engine";
 import { decideBotAction } from "./bot";
-import { initSfx, playSfx, type Sfx } from "../sound/sfx";
+import { initSfx, playSfx, playSfxAndWait, type Sfx } from "../sound/sfx";
 
 /** 액션 타입 → 효과음. */
 function actionSfx(type: Action["type"], voice: "male" | "female" = "male"): Sfx {
@@ -67,7 +67,9 @@ export function useLocalTable(options: TableOptions) {
     }),
   );
   const [animationLocked, setAnimationLocked] = useState(true);
+  const [actionSoundPlaying, setActionSoundPlaying] = useState(false);
   const animationLockRef = useRef(true);
+  const actionSoundRef = useRef(false);
   const animationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const lockFor = useCallback((duration: number) => {
@@ -83,22 +85,28 @@ export function useLocalTable(options: TableOptions) {
 
   const humanSeat = 0;
   const legal: LegalActions | null =
-    !animationLocked && !isHandOver(state) && state.actingIndex === humanSeat
+    !animationLocked &&
+    !actionSoundPlaying &&
+    !isHandOver(state) &&
+    state.actingIndex === humanSeat
       ? legalActions(state)
       : null;
 
   const act = useCallback((action: Action) => {
-    if (animationLockRef.current) return;
+    if (animationLockRef.current || actionSoundRef.current) return;
     const voice = seatsMeta.current[humanSeat]?.voice ?? "male";
-    if (action.type === "fold") {
-      setTimeout(() => playSfx(actionSfx("fold", voice)), 120);
-    } else {
-      playSfx(actionSfx(action.type, voice));
-    }
-    setState((s) => {
-      if (isHandOver(s) || s.actingIndex !== humanSeat) return s;
-      return applyAction(s, action);
-    });
+    actionSoundRef.current = true;
+    setActionSoundPlaying(true);
+
+    void (async () => {
+      await playSfxAndWait(actionSfx(action.type, voice));
+      setState((s) => {
+        if (isHandOver(s) || s.actingIndex !== humanSeat) return s;
+        return applyAction(s, action);
+      });
+      actionSoundRef.current = false;
+      setActionSoundPlaying(false);
+    })();
   }, []);
 
   // 사운드 초기화 + 첫 핸드 셔플/딜 사운드
@@ -114,27 +122,25 @@ export function useLocalTable(options: TableOptions) {
 
   // 봇 자동 진행
   useEffect(() => {
-    if (animationLocked || isHandOver(state)) return;
+    if (animationLocked || actionSoundPlaying || isHandOver(state)) return;
     const actor = seatsMeta.current[state.actingIndex];
     if (!actor?.isBot) return;
+    const actorIndex = state.actingIndex;
     const botAction = decideBotAction(state);
-    const t = setTimeout(() => {
-      if (animationLockRef.current) return;
-      const voice = seatsMeta.current[state.actingIndex]?.voice ?? "male";
-      if (botAction.type === "fold") {
-        setTimeout(() => playSfx(actionSfx("fold", voice)), 120);
-      } else {
-        playSfx(actionSfx(botAction.type, voice));
-      }
+    const t = setTimeout(async () => {
+      if (animationLockRef.current || actionSoundRef.current) return;
+      actionSoundRef.current = true;
+      setActionSoundPlaying(true);
+      await playSfxAndWait(actionSfx(botAction.type, actor.voice));
       setState((s) => {
-        if (isHandOver(s)) return s;
-        const meta = seatsMeta.current[s.actingIndex];
-        if (!meta?.isBot) return s;
+        if (isHandOver(s) || s.actingIndex !== actorIndex) return s;
         return applyAction(s, botAction);
       });
+      actionSoundRef.current = false;
+      setActionSoundPlaying(false);
     }, BOT_DELAY_MS);
     return () => clearTimeout(t);
-  }, [animationLocked, lockFor, state]);
+  }, [actionSoundPlaying, animationLocked, state]);
 
   // 상태 전이 기반 사운드 (커뮤니티 카드 딜 / 내 차례 / 승리) + 스택 저장
   const prev = useRef<HandState | null>(null);
