@@ -2,7 +2,7 @@ import React, { useEffect, useState } from "react";
 import { LoginScreen } from "./src/screens/LoginScreen";
 import { LobbyScreen } from "./src/screens/LobbyScreen";
 import { GameScreen } from "./src/screens/GameScreen";
-import { initSfx, playSfx } from "./src/sound/sfx";
+import { initSfx, unlockSfx } from "./src/sound/sfx";
 import { playMusic, stopMusic } from "./src/sound/music";
 
 type Screen = "login" | "lobby" | "game";
@@ -22,8 +22,8 @@ export default function App() {
     case "login":
       return (
         <LoginScreen
-          onLogin={() => {
-            playSfx("ui_confirm");
+          onLogin={async () => {
+            await unlockSfx("ui_confirm");
             void playMusic("lobby");
             setScreen("lobby");
           }}
@@ -34,8 +34,8 @@ export default function App() {
         <LobbyScreen
           playerAvatarIndex={playerAvatarIndex}
           onAvatarChange={setPlayerAvatarIndex}
-          onStartGame={() => {
-            playSfx("ui_confirm");
+          onStartGame={async () => {
+            await unlockSfx("ui_confirm");
             void playMusic("table");
             setScreen("game");
           }}
@@ -45,8 +45,8 @@ export default function App() {
       return (
         <GameScreen
           playerAvatarIndex={playerAvatarIndex}
-          onExit={() => {
-            playSfx("ui_back");
+          onExit={async () => {
+            await unlockSfx("ui_back");
             void playMusic("lobby");
             setScreen("lobby");
           }}

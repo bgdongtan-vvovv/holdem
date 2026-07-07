@@ -74,9 +74,24 @@ const ACTION_VOICES: Sfx[] = [
 const ACTION_ADVANCE_DELAY_MS = 100;
 let enabled = true;
 let initialized = false;
+let initPromise: Promise<void> | null = null;
+
+const warn = (message: string, error?: unknown) => {
+  if (typeof __DEV__ !== "undefined" && __DEV__) {
+    // 개발 중에는 사운드 실패 원인을 확인할 수 있게 남긴다.
+    // 배포 빌드에서는 조용히 무시된다.
+    console.warn(message, error);
+  }
+};
 
 export async function initSfx(): Promise<void> {
   if (initialized) return;
+  if (initPromise) return initPromise;
+  initPromise = loadSfx();
+  return initPromise;
+}
+
+async function loadSfx(): Promise<void> {
   initialized = true;
   try {
     await Audio.setAudioModeAsync({ playsInSilentModeIOS: true, shouldDuckAndroid: true });
@@ -86,8 +101,13 @@ export async function initSfx(): Promise<void> {
         sounds[k] = sound;
       }),
     );
-  } catch {
-    // 오디오 로드 실패는 조용히 무시 (사운드 없이 계속 플레이 가능)
+  } catch (error) {
+    initialized = false;
+    initPromise = null;
+    warn("SFX 초기화 실패", error);
+    // 오디오 로드 실패는 게임 진행을 막지 않는다. 다음 사용자 터치 때 재시도한다.
+  } finally {
+    if (initialized) initPromise = null;
   }
 }
 
@@ -102,13 +122,33 @@ export function isSfxEnabled(): boolean {
 export function playSfx(name: Sfx): void {
   if (!enabled) return;
   const s = sounds[name];
-  if (!s) return;
+  if (!s) {
+    void initSfx().then(() => {
+      const loaded = sounds[name];
+      if (loaded) loaded.replayAsync().catch((error) => warn(`SFX 재생 실패: ${name}`, error));
+    });
+    return;
+  }
   s.replayAsync().catch(() => {});
+}
+
+/** 브라우저/모바일의 첫 터치 오디오 잠금을 해제하고 즉시 한 번 재생한다. */
+export async function unlockSfx(name: Sfx = "ui_click"): Promise<void> {
+  if (!enabled) return;
+  await initSfx();
+  const sound = sounds[name];
+  if (!sound) return;
+  try {
+    await sound.replayAsync();
+  } catch (error) {
+    warn(`SFX unlock 실패: ${name}`, error);
+  }
 }
 
 /** 효과음을 시작하고 해당 파일의 재생 시간이 끝날 때까지 기다린다. */
 export async function playSfxAndWait(name: Sfx): Promise<void> {
   if (!enabled) return;
+  if (!initialized) await initSfx();
   const sound = sounds[name];
   if (!sound) return;
 
