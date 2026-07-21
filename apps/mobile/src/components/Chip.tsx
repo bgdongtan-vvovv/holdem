@@ -133,17 +133,21 @@ const CHIP_IMAGE_SOURCES: Record<number, ImageSourcePropType> = {
   100000: require("../../assets/images/chips/chip100000.png") as ImageSourcePropType,
 };
 
-type ChipStackVisual = { value: number; count: number; color: string };
+export type ChipStackVisual = { value: number; count: number; color: string };
+
+const MAX_CHIPS_PER_STACK = 18;
 
 /** 금액을 단위별 실제 칩 개수로 분해해 쌓는다. */
 export function ChipPile({
   amount,
   chipSize = 24,
   accumulate = false,
+  stacks: providedStacks,
 }: {
   amount: number;
   chipSize?: number;
   accumulate?: boolean;
+  stacks?: ChipStackVisual[];
 }) {
   const previousStacks = useRef<{ value: number; count: number }[]>([]);
   const previousAmount = useRef(amount);
@@ -160,17 +164,17 @@ export function ChipPile({
     previousAmount.current = amount;
   }, [accumulate, amount]);
 
-  const stacks = accumulate ? accumulatedStacks : buildChipStacks(amount);
+  const stacks = providedStacks ?? (accumulate ? accumulatedStacks : buildChipStacks(amount));
   const visibleStacks = stacks.length > 0
-    ? stacks.slice(0, 9)
+    ? stacks.slice(0, 12)
     : [{ value: 100, color: DENOMINATIONS[DENOMINATIONS.length - 1].color, count: 1 }];
   const layout = realisticPileLayout(visibleStacks.length, chipSize);
   const previousVisibleCounts = visibleStacks.map((stack, index) => {
     const previous = previousStacks.current[index];
     return previous && previous.value === stack.value ? previous.count : 0;
   });
-  const pileWidth = chipSize * 9.2;
-  const pileHeight = chipSize * 2.65;
+  const pileWidth = chipSize * 9.6;
+  const pileHeight = chipSize * 4.0;
 
   useEffect(() => {
     previousStacks.current = visibleStacks.map((stack) => ({
@@ -199,20 +203,20 @@ export function ChipPile({
   );
 }
 
-function buildChipStacks(amount: number): ChipStackVisual[] {
+export function buildChipStacks(amount: number): ChipStackVisual[] {
   let remaining = Math.max(0, Math.round(amount));
   const stacks: ChipStackVisual[] = [];
   for (const denomination of DENOMINATIONS) {
     const count = Math.floor(remaining / denomination.value);
     remaining %= denomination.value;
-    for (let i = 0; i < count; i += 8) {
-      stacks.push({ value: denomination.value, color: denomination.color, count: Math.min(8, count - i) });
+    for (let i = 0; i < count; i += MAX_CHIPS_PER_STACK) {
+      stacks.push({ value: denomination.value, color: denomination.color, count: Math.min(MAX_CHIPS_PER_STACK, count - i) });
     }
   }
   return stacks;
 }
 
-function appendChipDelta(existing: ChipStackVisual[], delta: number): ChipStackVisual[] {
+export function appendChipDelta(existing: ChipStackVisual[], delta: number): ChipStackVisual[] {
   const next = existing.map((stack) => ({ ...stack }));
   let remaining = Math.max(0, Math.round(delta));
 
@@ -235,15 +239,15 @@ function appendChipDelta(existing: ChipStackVisual[], delta: number): ChipStackV
 function findOpenStackIndex(stacks: ChipStackVisual[], value: number): number {
   for (let i = stacks.length - 1; i >= 0; i -= 1) {
     const stack = stacks[i]!;
-    if (stack.value === value && stack.count < 8) return i;
+    if (stack.value === value && stack.count < MAX_CHIPS_PER_STACK) return i;
   }
   return -1;
 }
 
 function realisticPileLayout(count: number, size: number) {
-  const gap = size * 1.64;
+  const gap = size * 1.48;
   const totalWidth = Math.max(0, count - 1) * gap;
-  const start = Math.max(0, (size * 7.75 - totalWidth) / 2);
+  const start = Math.max(0, (size * 8.15 - totalWidth) / 2);
 
   return Array.from({ length: count }).map((_, index) => ({
     left: start + index * gap,
@@ -278,7 +282,7 @@ function ChipColumn({
   const chipWidth = size * 1.42;
   const chipHeight = size * 1.26;
   const step = Math.max(3, size * 0.13);
-  const maxVisible = Math.max(1, Math.min(8, count));
+  const maxVisible = Math.max(1, Math.min(MAX_CHIPS_PER_STACK, count));
   const settledCount = Math.max(0, Math.min(maxVisible, previousCount));
   const stackHeight = chipHeight + (maxVisible - 1) * step;
   const source = CHIP_IMAGE_SOURCES[value] ?? CHIP_IMAGE_SOURCES[100];

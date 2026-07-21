@@ -11,7 +11,7 @@ import {
 import { theme } from "../theme";
 import { PlayingCard } from "./PlayingCard";
 import { TableSeat } from "./TableSeat";
-import { ChipPile } from "./Chip";
+import { appendChipDelta, ChipPile, type ChipStackVisual } from "./Chip";
 import { AnimatedAppear } from "./AnimatedAppear";
 import type { SeatMeta } from "../game/useLocalTable";
 import { formatGameMoney } from "../formatMoney";
@@ -77,6 +77,7 @@ export function PokerTable({
 }) {
   const [tableSize, setTableSize] = useState({ width: 0, height: 0 });
   const [displayPot, setDisplayPot] = useState(0);
+  const [potStacks, setPotStacks] = useState<ChipStackVisual[]>([]);
   const [betFlights, setBetFlights] = useState<
     { id: number; amount: number; visualSeat: number }[]
   >([]);
@@ -114,6 +115,7 @@ export function PokerTable({
     if (currentPot < previousPot.current) {
       baseline = state.players.map(() => 0);
       setDisplayPot(0);
+      setPotStacks([]);
     }
 
     const incoming = state.players.flatMap((player) => {
@@ -136,7 +138,12 @@ export function PokerTable({
 
     setBetFlights((existing) => [...existing, ...incoming]);
     const ids = new Set(incoming.map((flight) => flight.id));
-    setTimeout(() => setDisplayPot(currentPot), 620);
+    setTimeout(() => {
+      setDisplayPot(currentPot);
+      setPotStacks((existing) => (
+        incoming.reduce((stacks, flight) => appendChipDelta(stacks, flight.amount), existing)
+      ));
+    }, 620);
     setTimeout(
       () => setBetFlights((existing) => existing.filter((flight) => !ids.has(flight.id))),
       900,
@@ -162,7 +169,7 @@ export function PokerTable({
             </Text>
             {displayPot > 0 && state.street !== "complete" && (
               <View style={styles.potPill}>
-                <ChipPile amount={displayPot} chipSize={25} accumulate />
+                <ChipPile amount={displayPot} chipSize={25} stacks={potStacks} />
                 <Text style={styles.potText}>팟 {formatGameMoney(displayPot)}</Text>
               </View>
             )}
