@@ -11,7 +11,14 @@ import {
 import { theme } from "../theme";
 import { PlayingCard } from "./PlayingCard";
 import { TableSeat } from "./TableSeat";
-import { appendChipDelta, ChipPile, type ChipStackVisual } from "./Chip";
+import {
+  appendChipDelta,
+  buildChipStacks,
+  ChipPile,
+  chipPileMetrics,
+  chipStackLayout,
+  type ChipStackVisual,
+} from "./Chip";
 import { AnimatedAppear } from "./AnimatedAppear";
 import type { SeatMeta } from "../game/useLocalTable";
 import { formatGameMoney } from "../formatMoney";
@@ -79,10 +86,11 @@ export function PokerTable({
   const [displayPot, setDisplayPot] = useState(0);
   const [potStacks, setPotStacks] = useState<ChipStackVisual[]>([]);
   const [betFlights, setBetFlights] = useState<
-    { id: number; amount: number; visualSeat: number }[]
+    { id: number; amount: number; visualSeat: number; targetStacks: ChipStackVisual[] }[]
   >([]);
   const previousCommitted = useRef<number[]>(state.players.map(() => 0));
   const previousPot = useRef(0);
+  const potStacksRef = useRef<ChipStackVisual[]>([]);
   const flightId = useRef(0);
   // hero 를 시각적 0번(바텀 센터)에 두고 나머지를 순서대로 배치
   const n = state.players.length;
@@ -116,6 +124,7 @@ export function PokerTable({
       baseline = state.players.map(() => 0);
       setDisplayPot(0);
       setPotStacks([]);
+      potStacksRef.current = [];
     }
 
     const incoming = state.players.flatMap((player) => {
@@ -136,13 +145,21 @@ export function PokerTable({
       return;
     }
 
-    setBetFlights((existing) => [...existing, ...incoming]);
+    const nextPotStacks = incoming.reduce(
+      (stacks, flight) => appendChipDelta(stacks, flight.amount),
+      potStacksRef.current,
+    );
+    const flights = incoming.map((flight) => ({
+      ...flight,
+      targetStacks: nextPotStacks,
+    }));
+
+    setBetFlights((existing) => [...existing, ...flights]);
     const ids = new Set(incoming.map((flight) => flight.id));
     setTimeout(() => {
       setDisplayPot(currentPot);
-      setPotStacks((existing) => (
-        incoming.reduce((stacks, flight) => appendChipDelta(stacks, flight.amount), existing)
-      ));
+      potStacksRef.current = nextPotStacks;
+      setPotStacks(nextPotStacks);
     }, 620);
     setTimeout(
       () => setBetFlights((existing) => existing.filter((flight) => !ids.has(flight.id))),
@@ -241,6 +258,7 @@ export function PokerTable({
             key={flight.id}
             amount={flight.amount}
             visualSeat={flight.visualSeat}
+            targetStacks={flight.targetStacks}
             tableSize={tableSize}
           />
         ))}
@@ -261,19 +279,23 @@ export function PokerTable({
 function BetToPot({
   amount,
   visualSeat,
+  targetStacks,
   tableSize,
 }: {
   amount: number;
   visualSeat: number;
+  targetStacks: ChipStackVisual[];
   tableSize: { width: number; height: number };
 }) {
   const progress = useRef(new Animated.Value(0)).current;
   const start = BET_POS[visualSeat]!;
   const startX = (Number.parseFloat(start.left) / 100) * tableSize.width;
   const startY = (Number.parseFloat(start.top) / 100) * tableSize.height;
-  const targetX = tableSize.width * POT_CHIP_CENTER_X;
-  const targetY = tableSize.height * POT_CHIP_CENTER_Y;
-  const flightPileWidth = 24 * 9.2;
+  const flightStacks = buildChipStacks(amount);
+  const visibleTargetStacks = targetStacks.slice(0, 12);
+  const targetLayout = chipStackLayout(visibleTargetStacks.length, 25);
+  const targetMetrics = chipPileMetrics(25);
+  const flightMetrics = chipPileMetrics(24);
 
   useEffect(() => {
     playSfx("chips_drop");
@@ -288,34 +310,59 @@ function BetToPot({
   }, [progress]);
 
   return (
-    <Animated.View
-      pointerEvents="none"
-      style={[
-        styles.betFlight,
-        {
-          left: startX - flightPileWidth / 2,
-          top: startY - 30,
-          opacity: progress.interpolate({
-            inputRange: [0, 0.82, 1],
-            outputRange: [1, 1, 0.15],
-          }),
-          transform: [
-            { translateX: progress.interpolate({ inputRange: [0, 0.72, 1], outputRange: [0, targetX - startX, targetX - startX] }) },
-            {
-              translateY: progress.interpolate({
-                inputRange: [0, 0.72, 0.9, 1],
-                outputRange: [0, targetY - startY - 36, targetY - startY - 8, targetY - startY],
-              }),
-            },
-            { scale: progress.interpolate({ inputRange: [0, 0.72, 1], outputRange: [0.82, 0.9, 0.88] }) },
-          ],
-        },
-      ]}
-    >
-      <ChipPile amount={amount} chipSize={24} />
-      <Text style={styles.flightAmount}>{formatGameMoney(amount)}</Text>
-    </Animated.View>
+    <>
+      {flightStacks.map((stack, index) => {
+        const targetIndex = findTargetStackIndex(visibleTargetStacks, stack.value);
+        const target = targetLayout[Math.max(0, targetIndex)] ?? targetLayout[0];
+        const startOffsetX = (index - (flightStacks.length - 1) / 2) * 18;
+        const flightStartX = startX + startOffsetX;
+        const targetStackX = tableSize.width * POT_CHIP_CENTER_X - targetMetrics.width / 2 + (target?.left ?? targetMetrics.width / 2);
+        const targetStackY = tableSize.height * POT_CHIP_CENTER_Y + 8;
+
+        return (
+          <Animated.View
+            key={`${stack.value}-${index}`}
+            pointerEvents="none"
+            style={[
+              styles.betFlight,
+              {
+                left: flightStartX - flightMetrics.width / 2,
+                top: startY - 30,
+                opacity: progress.interpolate({
+                  inputRange: [0, 0.88, 1],
+                  outputRange: [1, 1, 0],
+                }),
+                transform: [
+                  {
+                    translateX: progress.interpolate({
+                      inputRange: [0, 0.72, 1],
+                      outputRange: [0, targetStackX - flightStartX, targetStackX - flightStartX],
+                    }),
+                  },
+                  {
+                    translateY: progress.interpolate({
+                      inputRange: [0, 0.72, 0.9, 1],
+                      outputRange: [0, targetStackY - startY - 40, targetStackY - startY - 10, targetStackY - startY],
+                    }),
+                  },
+                  { scale: progress.interpolate({ inputRange: [0, 0.72, 1], outputRange: [0.82, 0.88, 0.88] }) },
+                ],
+              },
+            ]}
+          >
+            <ChipPile amount={amount} chipSize={24} stacks={[stack]} />
+          </Animated.View>
+        );
+      })}
+    </>
   );
+}
+
+function findTargetStackIndex(stacks: ChipStackVisual[], value: number): number {
+  for (let i = stacks.length - 1; i >= 0; i -= 1) {
+    if (stacks[i]?.value === value) return i;
+  }
+  return Math.max(0, stacks.length - 1);
 }
 
 function PotToWinner({

@@ -115,22 +115,22 @@ export function ChipStack({
   );
 }
 
-const DENOMINATIONS = [
-  { value: 100000, color: "#1f55a8" },
-  { value: 10000, color: "#111111" },
+export const DENOMINATIONS = [
   { value: 1000, color: "#1f55a8" },
   { value: 500, color: "#7d3c98" },
-  { value: 200, color: "#c0392b" },
-  { value: 100, color: "#25282d" },
+  { value: 100, color: "#111111" },
+  { value: 50, color: "#2e7d32" },
+  { value: 20, color: "#c0392b" },
+  { value: 10, color: "#f2f2f2" },
 ] as const;
 
 const CHIP_IMAGE_SOURCES: Record<number, ImageSourcePropType> = {
-  100: require("../../assets/images/chips/chip100.png") as ImageSourcePropType,
-  200: require("../../assets/images/chips/chip200.png") as ImageSourcePropType,
-  500: require("../../assets/images/chips/chip500.png") as ImageSourcePropType,
-  1000: require("../../assets/images/chips/chip1000.png") as ImageSourcePropType,
-  10000: require("../../assets/images/chips/chip10000.png") as ImageSourcePropType,
-  100000: require("../../assets/images/chips/chip100000.png") as ImageSourcePropType,
+  10: require("../../assets/images/chips/chip100.png") as ImageSourcePropType,
+  20: require("../../assets/images/chips/chip200.png") as ImageSourcePropType,
+  50: require("../../assets/images/chips/chip500.png") as ImageSourcePropType,
+  100: require("../../assets/images/chips/chip1000.png") as ImageSourcePropType,
+  500: require("../../assets/images/chips/chip10000.png") as ImageSourcePropType,
+  1000: require("../../assets/images/chips/chip100000.png") as ImageSourcePropType,
 };
 
 export type ChipStackVisual = { value: number; count: number; color: string };
@@ -173,8 +173,7 @@ export function ChipPile({
     const previous = previousStacks.current[index];
     return previous && previous.value === stack.value ? previous.count : 0;
   });
-  const pileWidth = chipSize * 9.6;
-  const pileHeight = chipSize * 4.0;
+  const { width: pileWidth, height: pileHeight } = chipPileMetrics(chipSize);
 
   useEffect(() => {
     previousStacks.current = visibleStacks.map((stack) => ({
@@ -242,6 +241,17 @@ function findOpenStackIndex(stacks: ChipStackVisual[], value: number): number {
     if (stack.value === value && stack.count < MAX_CHIPS_PER_STACK) return i;
   }
   return -1;
+}
+
+export function chipPileMetrics(size: number) {
+  return {
+    width: size * 9.6,
+    height: size * 4.0,
+  };
+}
+
+export function chipStackLayout(count: number, size: number) {
+  return realisticPileLayout(count, size);
 }
 
 function realisticPileLayout(count: number, size: number) {
