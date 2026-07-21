@@ -71,7 +71,7 @@ const ACTION_VOICES: Sfx[] = [
   "fold",
   "fold_female",
 ];
-const ACTION_ADVANCE_DELAY_MS = 100;
+const ACTION_ADVANCE_DELAY_MS = 220;
 let enabled = true;
 let initialized = false;
 let initPromise: Promise<void> | null = null;
@@ -154,24 +154,21 @@ export async function playSfxAndWait(name: Sfx): Promise<void> {
 
   try {
     if (ACTION_VOICES.includes(name)) {
-      await Promise.all(
-        ACTION_VOICES
-          .filter((voice) => voice !== name)
-          .map(async (voice) => {
-            const other = sounds[voice];
-            if (other) await other.stopAsync().catch(() => {});
-          }),
-      );
+      ACTION_VOICES
+        .filter((voice) => voice !== name)
+        .forEach((voice) => {
+          const other = sounds[voice];
+          if (other) void other.stopAsync().catch(() => {});
+        });
+      await sound.replayAsync();
+      await new Promise<void>((resolve) => setTimeout(resolve, ACTION_ADVANCE_DELAY_MS));
+      return;
     }
+
     const status = await sound.getStatusAsync();
-    const duration =
-      status.isLoaded && typeof status.durationMillis === "number"
-        ? status.durationMillis
-        : 550;
+    const duration = status.isLoaded && typeof status.durationMillis === "number" ? status.durationMillis : 550;
     await sound.replayAsync();
-    const audibleDuration = ACTION_VOICES.includes(name)
-      ? ACTION_ADVANCE_DELAY_MS
-      : Math.max(80, duration - (END_SILENCE_TRIM_MS[name] ?? 0));
+    const audibleDuration = Math.max(80, duration - (END_SILENCE_TRIM_MS[name] ?? 0));
     await new Promise<void>((resolve) => setTimeout(resolve, audibleDuration));
   } catch {
     // 재생 실패 시 게임 진행은 막지 않는다.

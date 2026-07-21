@@ -77,7 +77,8 @@ export function TableSeat({
         </View>
       )}
 
-      <View style={[styles.avatarLayer, isWinner ? styles.avatarWin : undefined]}>
+      <View style={styles.avatarLayer}>
+        {isWinner && <WinnerGlow />}
         <Avatar seat={player.seat} avatarIndex={avatarIndex} size={avatarSize} />
       </View>
 
@@ -93,6 +94,100 @@ export function TableSeat({
         )}
       </View>
     </View>
+  );
+}
+
+function WinnerGlow() {
+  const pulse = useRef(new Animated.Value(0)).current;
+  const spin = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    const pulseLoop = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulse, {
+          toValue: 1,
+          duration: 1050,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulse, {
+          toValue: 0,
+          duration: 1050,
+          easing: Easing.inOut(Easing.quad),
+          useNativeDriver: true,
+        }),
+      ]),
+    );
+    const spinLoop = Animated.loop(
+      Animated.timing(spin, {
+        toValue: 1,
+        duration: 5200,
+        easing: Easing.linear,
+        useNativeDriver: true,
+      }),
+    );
+
+    pulseLoop.start();
+    spinLoop.start();
+    return () => {
+      pulseLoop.stop();
+      spinLoop.stop();
+    };
+  }, [pulse, spin]);
+
+  return (
+    <AnimatedAppear style={styles.avatarGlow} translateY={4} duration={620}>
+      <Animated.View
+        style={[
+          styles.avatarGlowCore,
+          {
+            opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.5, 0.95] }),
+            transform: [
+              { scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.86, 1.12] }) },
+            ],
+          },
+        ]}
+      />
+      <Animated.View
+        style={[
+          styles.avatarGlowRing,
+          {
+            opacity: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.35, 0.78] }),
+            transform: [
+              { scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.92, 1.2] }) },
+              {
+                rotate: spin.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: ["0deg", "360deg"],
+                }),
+              },
+            ],
+          },
+        ]}
+      />
+      <Animated.View
+        style={[
+          styles.avatarGlowSpark,
+          {
+            opacity: pulse.interpolate({ inputRange: [0, 0.5, 1], outputRange: [0.15, 0.85, 0.25] }),
+            transform: [
+              {
+                rotate: spin.interpolate({
+                  inputRange: [0, 1],
+                  outputRange: ["360deg", "0deg"],
+                }),
+              },
+              { scale: pulse.interpolate({ inputRange: [0, 1], outputRange: [0.9, 1.08] }) },
+            ],
+          },
+        ]}
+      >
+        <View style={[styles.avatarSpark, styles.avatarSparkTop]} />
+        <View style={[styles.avatarSpark, styles.avatarSparkRight]} />
+        <View style={[styles.avatarSpark, styles.avatarSparkBottom]} />
+        <View style={[styles.avatarSpark, styles.avatarSparkLeft]} />
+      </Animated.View>
+    </AnimatedAppear>
   );
 }
 
@@ -171,13 +266,65 @@ const styles = StyleSheet.create({
     borderColor: "#fff7d6",
   },
   winText: { color: "#1a1a1a", fontWeight: "900", fontSize: 12, letterSpacing: 1 },
-  avatarWin: {
+  avatarLayer: {
+    zIndex: 4,
+    alignItems: "center",
+    justifyContent: "center",
+    overflow: "visible",
+  },
+  avatarGlow: {
+    position: "absolute",
+    left: -16,
+    right: -16,
+    top: -18,
+    bottom: -8,
+    alignItems: "center",
+    justifyContent: "center",
+    zIndex: -1,
+  },
+  avatarGlowCore: {
+    position: "absolute",
+    width: 112,
+    height: 100,
+    borderRadius: 56,
+    backgroundColor: "rgba(255,202,74,0.2)",
     shadowColor: theme.gold,
-    shadowOpacity: 1,
+    shadowOpacity: 0.95,
+    shadowRadius: 28,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  avatarGlowRing: {
+    position: "absolute",
+    width: 92,
+    height: 84,
+    borderRadius: 46,
+    borderWidth: 2,
+    borderColor: "rgba(255,219,112,0.5)",
+    shadowColor: theme.gold,
+    shadowOpacity: 0.85,
     shadowRadius: 14,
     shadowOffset: { width: 0, height: 0 },
   },
-  avatarLayer: { zIndex: 4 },
+  avatarGlowSpark: {
+    position: "absolute",
+    width: 118,
+    height: 106,
+  },
+  avatarSpark: {
+    position: "absolute",
+    width: 5,
+    height: 5,
+    borderRadius: 3,
+    backgroundColor: "#fff4b8",
+    shadowColor: theme.gold,
+    shadowOpacity: 1,
+    shadowRadius: 7,
+    shadowOffset: { width: 0, height: 0 },
+  },
+  avatarSparkTop: { left: 56, top: 2 },
+  avatarSparkRight: { right: 3, top: 48 },
+  avatarSparkBottom: { left: 50, bottom: 0 },
+  avatarSparkLeft: { left: 3, top: 42 },
   cards: { position: "absolute", flexDirection: "row", zIndex: 3, top: 0 },
   cardsOther: { width: 47 },
   cardsHuman: { top: 2, width: 84 },
@@ -196,7 +343,10 @@ const styles = StyleSheet.create({
     borderColor: "transparent",
   },
   plateActive: { borderColor: theme.namePlateActive, shadowColor: theme.gold, shadowOpacity: 0.9, shadowRadius: 8 },
-  plateWin: { borderColor: theme.gold, backgroundColor: "rgba(60,45,10,0.92)" },
+  plateWin: {
+    borderColor: "rgba(255,210,89,0.78)",
+    backgroundColor: "rgba(18,16,12,0.82)",
+  },
   name: { color: theme.text, fontWeight: "800", fontSize: 12, minWidth: 100, textAlign: "center" },
   stack: { color: theme.gold, fontWeight: "900", fontSize: 15 },
   timerTrack: {

@@ -20,6 +20,8 @@ import { playSfx } from "../sound/sfx";
 const BOARD_REVEAL_DELAY_MS = 500;
 const POT_CENTER_X = 0.5;
 const POT_CENTER_Y = 0.43;
+const POT_CHIP_CENTER_X = 0.425;
+const POT_CHIP_CENTER_Y = 0.432;
 
 // 좌석/베팅칩/딜러버튼 앵커 (테이블 영역 대비 %). hero = 바텀 센터.
 const SEAT_POS = [
@@ -148,7 +150,7 @@ export function PokerTable({
     >
       <View style={styles.tableImage}>
         <Image
-          source={require("../../assets/images/poker-table-portrait-v4.png")}
+          source={require("../../assets/images/poker-table-portrait-v5.png")}
           resizeMode="stretch"
           style={styles.tableBackground}
         />
@@ -160,7 +162,7 @@ export function PokerTable({
             </Text>
             {displayPot > 0 && state.street !== "complete" && (
               <View style={styles.potPill}>
-                <ChipPile amount={displayPot} chipSize={25} />
+                <ChipPile amount={displayPot} chipSize={25} accumulate />
                 <Text style={styles.potText}>팟 {formatGameMoney(displayPot)}</Text>
               </View>
             )}
@@ -262,8 +264,9 @@ function BetToPot({
   const start = BET_POS[visualSeat]!;
   const startX = (Number.parseFloat(start.left) / 100) * tableSize.width;
   const startY = (Number.parseFloat(start.top) / 100) * tableSize.height;
-  const targetX = tableSize.width * POT_CENTER_X;
-  const targetY = tableSize.height * POT_CENTER_Y;
+  const targetX = tableSize.width * POT_CHIP_CENTER_X;
+  const targetY = tableSize.height * POT_CHIP_CENTER_Y;
+  const flightPileWidth = 24 * 9.2;
 
   useEffect(() => {
     playSfx("chips_drop");
@@ -283,16 +286,21 @@ function BetToPot({
       style={[
         styles.betFlight,
         {
-          left: startX - 35,
+          left: startX - flightPileWidth / 2,
           top: startY - 30,
           opacity: progress.interpolate({
             inputRange: [0, 0.82, 1],
             outputRange: [1, 1, 0.15],
           }),
           transform: [
-            { translateX: progress.interpolate({ inputRange: [0, 1], outputRange: [0, targetX - startX] }) },
-            { translateY: progress.interpolate({ inputRange: [0, 1], outputRange: [0, targetY - startY] }) },
-            { scale: progress.interpolate({ inputRange: [0, 0.45, 1], outputRange: [0.8, 1.12, 0.65] }) },
+            { translateX: progress.interpolate({ inputRange: [0, 0.72, 1], outputRange: [0, targetX - startX, targetX - startX] }) },
+            {
+              translateY: progress.interpolate({
+                inputRange: [0, 0.72, 0.9, 1],
+                outputRange: [0, targetY - startY - 36, targetY - startY - 8, targetY - startY],
+              }),
+            },
+            { scale: progress.interpolate({ inputRange: [0, 0.72, 1], outputRange: [0.82, 0.9, 0.88] }) },
           ],
         },
       ]}
@@ -409,7 +417,7 @@ function anchor(pos: { left: string; top: string }) {
 const styles = StyleSheet.create({
   area: {
     flex: 1, position: "relative", justifyContent: "center",
-    backgroundColor: "#030711",
+    backgroundColor: "#071528",
   },
   tableImage: {
     position: "absolute",
@@ -434,7 +442,7 @@ const styles = StyleSheet.create({
     width: "100%",
     height: "100%",
     borderRadius: 24,
-    transform: [{ scale: 1.09 }],
+    transform: [{ scale: 1.02 }],
   },
   tableLight: {
     width: "76%",
@@ -470,14 +478,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginTop: 8,
     backgroundColor: "rgba(0,0,0,0.48)",
-    minHeight: 48,
-    paddingHorizontal: 14,
-    paddingVertical: 5,
-    borderRadius: 24,
-    gap: 8,
+    minHeight: 62,
+    minWidth: 270,
+    paddingHorizontal: 16,
+    paddingVertical: 7,
+    borderRadius: 31,
+    gap: 10,
+    justifyContent: "center",
   },
   potChip: { width: 14, height: 14, borderRadius: 7, backgroundColor: theme.gold, borderWidth: 2, borderColor: "#fff7d6" },
-  potText: { color: theme.gold, fontWeight: "800", fontSize: 14 },
+  potText: { color: theme.gold, fontWeight: "900", fontSize: 15 },
 
   seat: {
     position: "absolute",

@@ -1,5 +1,5 @@
-import React from "react";
-import { Image, StyleSheet, Text, View } from "react-native";
+import React, { useEffect, useRef, useState } from "react";
+import { Animated, Easing, Image, StyleSheet, Text, View, type ImageSourcePropType } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 
 /** hex 색을 f(0~1)만큼 어둡게. */
@@ -116,58 +116,303 @@ export function ChipStack({
 }
 
 const DENOMINATIONS = [
-  { value: 1000, color: "#d4a72c" },
+  { value: 100000, color: "#1f55a8" },
+  { value: 10000, color: "#111111" },
+  { value: 1000, color: "#1f55a8" },
   { value: 500, color: "#7d3c98" },
-  { value: 100, color: "#2471a3" },
-  { value: 25, color: "#c0392b" },
-  { value: 5, color: "#25282d" },
-  { value: 1, color: "#229954" },
+  { value: 200, color: "#c0392b" },
+  { value: 100, color: "#25282d" },
 ] as const;
+
+const CHIP_IMAGE_SOURCES: Record<number, ImageSourcePropType> = {
+  100: require("../../assets/images/chips/chip100.png") as ImageSourcePropType,
+  200: require("../../assets/images/chips/chip200.png") as ImageSourcePropType,
+  500: require("../../assets/images/chips/chip500.png") as ImageSourcePropType,
+  1000: require("../../assets/images/chips/chip1000.png") as ImageSourcePropType,
+  10000: require("../../assets/images/chips/chip10000.png") as ImageSourcePropType,
+  100000: require("../../assets/images/chips/chip100000.png") as ImageSourcePropType,
+};
+
+type ChipStackVisual = { value: number; count: number; color: string };
 
 /** 금액을 단위별 실제 칩 개수로 분해해 쌓는다. */
 export function ChipPile({
   amount,
   chipSize = 24,
+  accumulate = false,
 }: {
   amount: number;
   chipSize?: number;
+  accumulate?: boolean;
 }) {
+  const previousStacks = useRef<{ value: number; count: number }[]>([]);
+  const previousAmount = useRef(amount);
+  const [accumulatedStacks, setAccumulatedStacks] = useState<ChipStackVisual[]>(() => buildChipStacks(amount));
+
+  useEffect(() => {
+    if (!accumulate) return;
+    setAccumulatedStacks((existing) => {
+      if (amount <= 0) return [];
+      if (amount < previousAmount.current) return buildChipStacks(amount);
+      if (amount === previousAmount.current) return existing.length > 0 ? existing : buildChipStacks(amount);
+      return appendChipDelta(existing, amount - previousAmount.current);
+    });
+    previousAmount.current = amount;
+  }, [accumulate, amount]);
+
+  const stacks = accumulate ? accumulatedStacks : buildChipStacks(amount);
+  const visibleStacks = stacks.length > 0
+    ? stacks.slice(0, 9)
+    : [{ value: 100, color: DENOMINATIONS[DENOMINATIONS.length - 1].color, count: 1 }];
+  const layout = realisticPileLayout(visibleStacks.length, chipSize);
+  const previousVisibleCounts = visibleStacks.map((stack, index) => {
+    const previous = previousStacks.current[index];
+    return previous && previous.value === stack.value ? previous.count : 0;
+  });
+  const pileWidth = chipSize * 9.2;
+  const pileHeight = chipSize * 2.65;
+
+  useEffect(() => {
+    previousStacks.current = visibleStacks.map((stack) => ({
+      value: stack.value,
+      count: stack.count,
+    }));
+  }, [visibleStacks]);
+
+  return (
+    <View style={{ width: pileWidth, height: pileHeight }}>
+      {visibleStacks.map((stack, index) => (
+        <ChipColumn
+          key={`${stack.value}-${index}`}
+          value={stack.value}
+          count={stack.count + layout[index]!.extra}
+          previousCount={previousVisibleCounts[index] > 0 ? previousVisibleCounts[index] + layout[index]!.extra : 0}
+          size={chipSize}
+          left={layout[index]!.left}
+          lift={layout[index]!.lift}
+          delay={index * 70}
+          zIndex={layout[index]!.zIndex}
+          animateToken={amount}
+        />
+      ))}
+    </View>
+  );
+}
+
+function buildChipStacks(amount: number): ChipStackVisual[] {
   let remaining = Math.max(0, Math.round(amount));
-  const stacks: { value: number; count: number }[] = [];
+  const stacks: ChipStackVisual[] = [];
   for (const denomination of DENOMINATIONS) {
     const count = Math.floor(remaining / denomination.value);
     remaining %= denomination.value;
-    for (let i = 0; i < count; i += 5) {
-      stacks.push({ value: denomination.value, count: Math.min(5, count - i) });
+    for (let i = 0; i < count; i += 8) {
+      stacks.push({ value: denomination.value, color: denomination.color, count: Math.min(8, count - i) });
+    }
+  }
+  return stacks;
+}
+
+function appendChipDelta(existing: ChipStackVisual[], delta: number): ChipStackVisual[] {
+  const next = existing.map((stack) => ({ ...stack }));
+  let remaining = Math.max(0, Math.round(delta));
+
+  for (const denomination of DENOMINATIONS) {
+    const count = Math.floor(remaining / denomination.value);
+    remaining %= denomination.value;
+    for (let i = 0; i < count; i += 1) {
+      const openStackIndex = findOpenStackIndex(next, denomination.value);
+      if (openStackIndex >= 0) {
+        next[openStackIndex]!.count += 1;
+      } else {
+        next.push({ value: denomination.value, color: denomination.color, count: 1 });
+      }
     }
   }
 
-  const imageSize = chipSize * 1.65;
-  const columnWidth = imageSize * 0.62;
+  return next;
+}
+
+function findOpenStackIndex(stacks: ChipStackVisual[], value: number): number {
+  for (let i = stacks.length - 1; i >= 0; i -= 1) {
+    const stack = stacks[i]!;
+    if (stack.value === value && stack.count < 8) return i;
+  }
+  return -1;
+}
+
+function realisticPileLayout(count: number, size: number) {
+  const gap = size * 1.64;
+  const totalWidth = Math.max(0, count - 1) * gap;
+  const start = Math.max(0, (size * 7.75 - totalWidth) / 2);
+
+  return Array.from({ length: count }).map((_, index) => ({
+    left: start + index * gap,
+    lift: 0,
+    zIndex: index + 1,
+    extra: 0,
+  }));
+}
+
+function ChipColumn({
+  value,
+  count,
+  previousCount,
+  size,
+  left,
+  lift,
+  delay,
+  zIndex,
+  animateToken,
+}: {
+  value: number;
+  count: number;
+  previousCount: number;
+  size: number;
+  left: number;
+  lift: number;
+  delay: number;
+  zIndex: number;
+  animateToken: number;
+}) {
+  const drop = useRef(new Animated.Value(0)).current;
+  const chipWidth = size * 1.42;
+  const chipHeight = size * 1.26;
+  const step = Math.max(3, size * 0.13);
+  const maxVisible = Math.max(1, Math.min(8, count));
+  const settledCount = Math.max(0, Math.min(maxVisible, previousCount));
+  const stackHeight = chipHeight + (maxVisible - 1) * step;
+  const source = CHIP_IMAGE_SOURCES[value] ?? CHIP_IMAGE_SOURCES[100];
+
+  useEffect(() => {
+    if (animateToken === 0 || settledCount >= maxVisible) {
+      drop.setValue(1);
+      return;
+    }
+    drop.setValue(0);
+    Animated.timing(drop, {
+      toValue: 1,
+      delay,
+      duration: 420 + Math.max(0, maxVisible - settledCount - 1) * 95,
+      easing: Easing.out(Easing.cubic),
+      useNativeDriver: true,
+    }).start();
+  }, [animateToken, delay, drop, maxVisible, settledCount]);
 
   return (
-    <View
+    <Animated.View
       style={{
-        width: Math.max(imageSize, imageSize + Math.max(0, stacks.length - 1) * columnWidth),
-        height: imageSize,
+        position: "absolute",
+        left,
+        bottom: lift,
+        zIndex,
+        width: size,
+        height: stackHeight,
       }}
     >
-      {stacks.map((stack, index) => (
-        <Image
-          key={`${stack.value}-${index}`}
-          source={chipStackSource(stack.value)}
+      {Array.from({ length: maxVisible }).map((_, i) => (
+        <Animated.Image
+          key={i}
+          source={source}
           resizeMode="contain"
-          style={{
-            position: "absolute",
-            left: index * columnWidth,
-            bottom: 0,
-            width: imageSize,
-            height: imageSize,
-            opacity: 0.82 + stack.count * 0.036,
-            transform: [{ scale: 0.78 + stack.count * 0.044 }],
-          }}
+          style={[
+            styles.realChipImage,
+            {
+              left: -size * 0.3,
+              bottom: i * step,
+              width: chipWidth,
+              height: chipHeight,
+              opacity: i < settledCount
+                ? 1
+                : chipProgress(drop, i - settledCount, maxVisible - settledCount, [0, 0.15, 1]),
+              transform: [
+                {
+                  translateY: i < settledCount
+                    ? 0
+                    : chipProgress(drop, i - settledCount, maxVisible - settledCount, [-34 - (i - settledCount) * 4, -8, 0]),
+                },
+              ],
+            },
+          ]}
         />
       ))}
+    </Animated.View>
+  );
+}
+
+function chipProgress(
+  progress: Animated.Value,
+  index: number,
+  total: number,
+  outputRange: [number, number, number],
+) {
+  const count = Math.max(1, total);
+  const start = Math.min(0.78, index / count);
+  const mid = Math.min(0.9, start + 0.12);
+  const end = Math.min(1, start + 0.32);
+  return progress.interpolate({
+    inputRange: [0, start, mid, end, 1],
+    outputRange: [outputRange[0], outputRange[0], outputRange[1], outputRange[2], outputRange[2]],
+  });
+}
+
+function MiniChip({
+  color,
+  size,
+  bottom,
+  strong,
+}: {
+  color: string;
+  size: number;
+  bottom: number;
+  strong: boolean;
+}) {
+  const edge = darken(color, 0.38);
+  const faceHeight = size * 0.52;
+  const thickness = Math.max(3, size * 0.16);
+  const stripeW = Math.max(3, size * 0.13);
+  const isLight = color === "#ecf0f1";
+  const stripeColor = isLight ? "#3f62b5" : "rgba(255,255,255,0.9)";
+
+  return (
+    <View style={{ position: "absolute", left: 0, bottom, width: size, height: faceHeight + thickness }}>
+      <View
+        style={[
+          styles.miniChipSide,
+          {
+            top: faceHeight * 0.46,
+            width: size,
+            height: thickness + faceHeight * 0.25,
+            borderRadius: size / 2,
+            backgroundColor: edge,
+          },
+        ]}
+      >
+        <View style={[styles.sideStripe, { left: size * 0.14, width: stripeW, backgroundColor: stripeColor }]} />
+        <View style={[styles.sideStripe, { left: size * 0.43, width: stripeW, backgroundColor: stripeColor }]} />
+        <View style={[styles.sideStripe, { right: size * 0.13, width: stripeW, backgroundColor: stripeColor }]} />
+      </View>
+      <LinearGradient
+        colors={[lighten(color, isLight ? 0.1 : 0.45), color, darken(color, isLight ? 0.12 : 0.24)]}
+        start={{ x: 0.18, y: 0 }}
+        end={{ x: 0.9, y: 1 }}
+        style={[
+          styles.miniChipFace,
+          {
+            width: size,
+            height: faceHeight,
+            borderRadius: size / 2,
+            borderColor: edge,
+            opacity: strong ? 1 : 0.96,
+          },
+        ]}
+      >
+        <View style={[styles.miniStripe, { top: -1, left: size * 0.44, width: stripeW, height: faceHeight * 0.34, backgroundColor: stripeColor }]} />
+        <View style={[styles.miniStripe, { bottom: -1, left: size * 0.44, width: stripeW, height: faceHeight * 0.34, backgroundColor: stripeColor }]} />
+        <View style={[styles.miniStripe, { left: -1, top: faceHeight * 0.34, width: stripeW, height: faceHeight * 0.32, backgroundColor: stripeColor }]} />
+        <View style={[styles.miniStripe, { right: -1, top: faceHeight * 0.34, width: stripeW, height: faceHeight * 0.32, backgroundColor: stripeColor }]} />
+        <View style={[styles.miniRing, { width: size * 0.5, height: faceHeight * 0.62, borderColor: isLight ? "#9ba7b6" : "rgba(255,255,255,0.62)" }]} />
+        <View style={[styles.miniGlint, { width: size * 0.34, height: faceHeight * 0.18 }]} />
+      </LinearGradient>
     </View>
   );
 }
@@ -212,5 +457,63 @@ const styles = StyleSheet.create({
   glint: {
     position: "absolute", left: "18%", top: "8%", borderRadius: 999,
     backgroundColor: "rgba(255,255,255,0.32)", transform: [{ rotate: "-18deg" }],
+  },
+  pileGround: {
+    position: "absolute",
+    bottom: -1,
+    borderRadius: 999,
+    backgroundColor: "rgba(0,0,0,0.34)",
+    transform: [{ scaleX: 1.1 }],
+  },
+  realChipImage: {
+    position: "absolute",
+    shadowColor: "#000",
+    shadowOpacity: 0.42,
+    shadowRadius: 3,
+    shadowOffset: { width: 0, height: 2 },
+  },
+  miniChipSide: {
+    position: "absolute",
+    left: 0,
+    overflow: "hidden",
+    borderWidth: 0.6,
+    borderColor: "rgba(0,0,0,0.35)",
+  },
+  sideStripe: {
+    position: "absolute",
+    top: 0,
+    height: "100%",
+    opacity: 0.86,
+  },
+  miniChipFace: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    borderWidth: 1,
+    overflow: "hidden",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.28,
+    shadowRadius: 2.5,
+    shadowOffset: { width: 0, height: 1 },
+  },
+  miniStripe: {
+    position: "absolute",
+    borderRadius: 2,
+    opacity: 0.92,
+  },
+  miniRing: {
+    borderWidth: 1.1,
+    borderRadius: 999,
+    backgroundColor: "rgba(0,0,0,0.08)",
+  },
+  miniGlint: {
+    position: "absolute",
+    top: "13%",
+    left: "18%",
+    borderRadius: 999,
+    backgroundColor: "rgba(255,255,255,0.36)",
+    transform: [{ rotate: "-18deg" }],
   },
 });
