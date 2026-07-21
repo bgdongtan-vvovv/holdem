@@ -12,15 +12,18 @@ function GradientButton({
   textColor = "#fff",
   label,
   onPress,
+  disabled = false,
 }: {
   colors: readonly [string, string];
   textColor?: string;
   label: string;
   onPress: () => void;
+  disabled?: boolean;
 }) {
   return (
     <Pressable
-      style={styles.btnWrap}
+      disabled={disabled}
+      style={[styles.btnWrap, disabled && styles.disabled]}
       onPress={() => {
         playSfx("ui_click");
         onPress();
@@ -43,10 +46,12 @@ export function ActionBar({
   state,
   legal,
   onAction,
+  disabled = false,
 }: {
   state: HandState;
   legal: LegalActions;
   onAction: (a: Action) => void;
+  disabled?: boolean;
 }) {
   const [raiseTo, setRaiseTo] = useState<number>(legal.minRaiseTo);
 
@@ -71,17 +76,30 @@ export function ActionBar({
     <View style={styles.wrap}>
       {legal.canRaise && (
         <View style={styles.raiseRow}>
-          <Pressable style={styles.step} onPress={() => click(() => setRaiseTo((v) => clamp(v - state.bigBlind)))}>
+          <Pressable
+            disabled={disabled}
+            style={[styles.step, disabled && styles.disabled]}
+            onPress={() => click(() => setRaiseTo((v) => clamp(v - state.bigBlind)))}
+          >
             <Text style={styles.stepText}>−</Text>
           </Pressable>
           <View style={styles.raiseAmt}>
             <Text style={styles.raiseAmtText}>{fmt(raiseTo)}</Text>
           </View>
-          <Pressable style={styles.step} onPress={() => click(() => setRaiseTo((v) => clamp(v + state.bigBlind)))}>
+          <Pressable
+            disabled={disabled}
+            style={[styles.step, disabled && styles.disabled]}
+            onPress={() => click(() => setRaiseTo((v) => clamp(v + state.bigBlind)))}
+          >
             <Text style={styles.stepText}>＋</Text>
           </Pressable>
           {presets.map((p) => (
-            <Pressable key={p.label} style={styles.preset} onPress={() => click(() => setRaiseTo(clamp(p.to)))}>
+            <Pressable
+              key={p.label}
+              disabled={disabled}
+              style={[styles.preset, disabled && styles.disabled]}
+              onPress={() => click(() => setRaiseTo(clamp(p.to)))}
+            >
               <Text style={styles.presetText}>{p.label}</Text>
             </Pressable>
           ))}
@@ -89,12 +107,13 @@ export function ActionBar({
       )}
 
       <View style={styles.btnRow}>
-        <GradientButton colors={GRAD.fold} label="폴드" onPress={() => onAction({ type: "fold" })} />
+        <GradientButton disabled={disabled} colors={GRAD.fold} label="폴드" onPress={() => onAction({ type: "fold" })} />
 
         {legal.canCheck ? (
-          <GradientButton colors={GRAD.call} label="체크" onPress={() => onAction({ type: "check" })} />
+          <GradientButton disabled={disabled} colors={GRAD.call} label="체크" onPress={() => onAction({ type: "check" })} />
         ) : (
           <GradientButton
+            disabled={disabled}
             colors={GRAD.call}
             label={`콜 ${fmt(legal.callAmount)}`}
             onPress={() => onAction({ type: "call" })}
@@ -103,6 +122,7 @@ export function ActionBar({
 
         {legal.canRaise && (
           <GradientButton
+            disabled={disabled}
             colors={GRAD.raise}
             textColor="#1a1a1a"
             label={
@@ -152,4 +172,5 @@ const styles = StyleSheet.create({
   },
   btn: { flex: 1, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "rgba(255,255,255,0.15)", borderRadius: 12 },
   btnText: { color: "#fff", fontWeight: "900", fontSize: 16 },
+  disabled: { opacity: 0.45 },
 });

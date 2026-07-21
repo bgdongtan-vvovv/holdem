@@ -1,7 +1,7 @@
 import React from "react";
 import { Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
-import { HAND_CATEGORY_NAMES } from "@holdem/poker-engine";
+import { HAND_CATEGORY_NAMES, type LegalActions } from "@holdem/poker-engine";
 import { theme } from "../theme";
 import { PokerTable } from "../components/PokerTable";
 import { ActionBar } from "../components/ActionBar";
@@ -35,6 +35,18 @@ export function GameScreen({
   }));
   const table = useLocalTable({ seats, smallBlind: SMALL_BLIND, bigBlind: BIG_BLIND });
   const { state, seatsMeta, humanSeat, buttonIndex, legal, act, nextHand, handOver } = table;
+  const lastLegal = React.useRef<LegalActions>({
+    seat: humanSeat,
+    canFold: true,
+    canCheck: false,
+    canCall: true,
+    callAmount: BIG_BLIND,
+    canRaise: true,
+    minRaiseTo: BIG_BLIND * 2,
+    maxRaiseTo: BIG_BLIND * 10,
+  });
+  if (legal) lastLegal.current = legal;
+  const actionBarLegal = legal ?? lastLegal.current;
 
   return (
     <SafeAreaView style={styles.root}>
@@ -72,10 +84,13 @@ export function GameScreen({
         <View style={styles.footer}>
           {handOver ? (
             <ResultPanel state={state} onNext={nextHand} />
-          ) : legal ? (
-            <ActionBar state={state} legal={legal} onAction={act} />
           ) : (
-            <Text style={styles.waiting}>상대가 생각 중…</Text>
+            <ActionBar
+              state={state}
+              legal={actionBarLegal}
+              onAction={act}
+              disabled={!legal}
+            />
           )}
         </View>
       </View>
