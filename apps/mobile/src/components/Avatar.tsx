@@ -8,6 +8,9 @@ export const AVATARS = [
   require("../../assets/avatars/avatar_female_02_transparent.png"),
   require("../../assets/avatars/avatar_male_03_transparent.png"),
   require("../../assets/avatars/avatar_female_03_transparent.png"),
+  require("../../assets/avatars/avatar_male_04_transparent.png"),
+  require("../../assets/avatars/avatar_female_04_transparent.png"),
+  require("../../assets/avatars/avatar_male_05_transparent.png"),
 ] as const;
 
 /**

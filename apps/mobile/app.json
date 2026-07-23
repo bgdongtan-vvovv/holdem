@@ -1,14 +1,32 @@
 {
   "expo": {
     "name": "Holdem",
+    "owner": "davidkang3323",
     "slug": "holdem",
     "version": "0.1.0",
     "orientation": "portrait",
     "userInterfaceStyle": "dark",
     "backgroundColor": "#0b3d2e",
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "assets/images/**/*.png",
+      "assets/cards/**/*.png",
+      "assets/avatars/**/*.png",
+      "assets/sounds/**/*.mp3",
+      "assets/sounds/**/*.wav"
+    ],
+    "androidStatusBar": {
+      "hidden": true,
+      "translucent": true,
+      "backgroundColor": "#02050b"
+    },
+    "androidNavigationBar": {
+      "visible": "immersive",
+      "barStyle": "light-content",
+      "backgroundColor": "#02050b"
+    },
     "ios": {
       "supportsTablet": true,
+      "requireFullScreen": true,
       "bundleIdentifier": "com.holdem.app"
     },
     "android": {
@@ -16,6 +34,11 @@
     },
     "web": {
       "bundler": "metro"
+    },
+    "extra": {
+      "eas": {
+        "projectId": "8ad81fd2-3d01-4210-8233-7ec2164b9871"
+      }
     }
   }
 }

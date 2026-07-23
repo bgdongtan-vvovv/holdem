@@ -36,8 +36,11 @@ export function TableSeat({
   const out = player.status === "out";
   const showCards = isHuman || revealCards;
   const hasCards = player.holeCards.length > 0 && !folded && !out;
-  const avatarSize = isHuman ? 96 : 82;
-  const cardsOnLeft = dealIndex === 3 || dealIndex === 4 || dealIndex === 5;
+  const avatarSize = isHuman ? 88 : 72;
+  const cardsOnLeft =
+    playerCount > 6
+      ? dealIndex === 5 || dealIndex === 6 || dealIndex === 7 || dealIndex === 8
+      : dealIndex === 3 || dealIndex === 4 || dealIndex === 5;
 
   return (
     <View style={[styles.wrap, folded && styles.folded]}>
@@ -55,6 +58,7 @@ export function TableSeat({
             styles.cards,
             isHuman ? styles.cardsHuman : styles.cardsOther,
             cardsOnLeft ? styles.cardsLeft : styles.cardsRight,
+            isHuman && styles.cardsHumanRight,
           ]}
         >
           {player.holeCards.map((c, i) => (
@@ -62,7 +66,7 @@ export function TableSeat({
               key={cardKey(c)}
               delay={(i * playerCount + dealIndex) * 270}
               from={dealOffset}
-              overlap={i === 0 ? 0 : isHuman ? -12 : -29}
+              overlap={i === 0 ? 0 : isHuman ? -3 : -29}
               settleY={!isHuman && i === 1 ? 3 : 0}
               rotateTo={!isHuman ? (i === 0 ? "-5deg" : "4deg") : "0deg"}
             >
@@ -77,7 +81,7 @@ export function TableSeat({
         </View>
       )}
 
-      <View style={styles.avatarLayer}>
+      <View style={[styles.avatarLayer, isHuman && styles.avatarHumanShift]}>
         {isWinner && <WinnerGlow />}
         <Avatar seat={player.seat} avatarIndex={avatarIndex} size={avatarSize} />
       </View>
@@ -252,7 +256,7 @@ function cardKey(card: Card): string {
 }
 
 const styles = StyleSheet.create({
-  wrap: { alignItems: "center", width: 118 },
+  wrap: { alignItems: "center", width: 112 },
   folded: { opacity: 0.45 },
   winBadge: {
     position: "absolute",
@@ -272,6 +276,9 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     overflow: "visible",
   },
+  avatarHumanShift: {
+    transform: [{ translateX: -26 }],
+  },
   avatarGlow: {
     position: "absolute",
     left: -16,
@@ -284,9 +291,9 @@ const styles = StyleSheet.create({
   },
   avatarGlowCore: {
     position: "absolute",
-    width: 112,
-    height: 100,
-    borderRadius: 56,
+    width: 104,
+    height: 94,
+    borderRadius: 52,
     backgroundColor: "rgba(255,202,74,0.2)",
     shadowColor: theme.gold,
     shadowOpacity: 0.95,
@@ -295,9 +302,9 @@ const styles = StyleSheet.create({
   },
   avatarGlowRing: {
     position: "absolute",
-    width: 92,
-    height: 84,
-    borderRadius: 46,
+    width: 86,
+    height: 78,
+    borderRadius: 43,
     borderWidth: 2,
     borderColor: "rgba(255,219,112,0.5)",
     shadowColor: theme.gold,
@@ -307,8 +314,8 @@ const styles = StyleSheet.create({
   },
   avatarGlowSpark: {
     position: "absolute",
-    width: 118,
-    height: 106,
+    width: 108,
+    height: 98,
   },
   avatarSpark: {
     position: "absolute",
@@ -321,23 +328,24 @@ const styles = StyleSheet.create({
     shadowRadius: 7,
     shadowOffset: { width: 0, height: 0 },
   },
-  avatarSparkTop: { left: 56, top: 2 },
-  avatarSparkRight: { right: 3, top: 48 },
-  avatarSparkBottom: { left: 50, bottom: 0 },
-  avatarSparkLeft: { left: 3, top: 42 },
+  avatarSparkTop: { left: 52, top: 2 },
+  avatarSparkRight: { right: 3, top: 44 },
+  avatarSparkBottom: { left: 46, bottom: 0 },
+  avatarSparkLeft: { left: 3, top: 39 },
   cards: { position: "absolute", flexDirection: "row", zIndex: 3, top: 0 },
   cardsOther: { width: 47 },
-  cardsHuman: { top: 2, width: 84 },
-  cardsRight: { left: 91 },
-  cardsLeft: { right: 91 },
+  cardsHuman: { top: -12, width: 118, zIndex: 12 },
+  cardsHumanRight: { left: 68 },
+  cardsRight: { left: 86 },
+  cardsLeft: { right: 86 },
   plate: {
-    marginTop: -15,
-    minWidth: 104,
+    marginTop: -9,
+    minWidth: 98,
     backgroundColor: theme.namePlate,
     borderRadius: 6,
-    paddingHorizontal: 9,
-    paddingTop: 9,
-    paddingBottom: 5,
+    paddingHorizontal: 8,
+    paddingTop: 7,
+    paddingBottom: 4,
     alignItems: "center",
     borderWidth: 1.5,
     borderColor: "transparent",
@@ -347,8 +355,8 @@ const styles = StyleSheet.create({
     borderColor: "rgba(255,210,89,0.78)",
     backgroundColor: "rgba(18,16,12,0.82)",
   },
-  name: { color: theme.text, fontWeight: "800", fontSize: 12, minWidth: 100, textAlign: "center" },
-  stack: { color: theme.gold, fontWeight: "900", fontSize: 15 },
+  name: { color: theme.text, fontWeight: "800", fontSize: 11.5, minWidth: 92, textAlign: "center" },
+  stack: { color: theme.gold, fontWeight: "900", fontSize: 14.5 },
   timerTrack: {
     marginTop: 3,
     width: "100%",

@@ -3,13 +3,15 @@ import { Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { HAND_CATEGORY_NAMES, type LegalActions } from "@holdem/poker-engine";
 import { theme } from "../theme";
-import { PokerTable } from "../components/PokerTable";
+import { PokerTable, ShowdownBurst } from "../components/PokerTable";
 import { ActionBar } from "../components/ActionBar";
 import { useLocalTable, type TableOptions } from "../game/useLocalTable";
 import { formatGameMoney } from "../formatMoney";
+import { playSfx, unlockSfx } from "../sound/sfx";
 
 const SMALL_BLIND = 10;
 const BIG_BLIND = 20;
+const SHOWDOWN_CARD_REVEAL_DELAY_MS = 3000;
 
 const SEATS: TableOptions["seats"] = [
   { id: "데이비드", isBot: false, stack: 3072 },
@@ -18,6 +20,9 @@ const SEATS: TableOptions["seats"] = [
   { id: "guest80652", isBot: true, stack: 760 },
   { id: "규규규승", isBot: true, stack: 1980 },
   { id: "kitiya", isBot: true, stack: 3481 },
+  { id: "블랙존", isBot: true, stack: 2240 },
+  { id: "에이스퀸", isBot: true, stack: 2870 },
+  { id: "로얄킹", isBot: true, stack: 1960 },
 ];
 
 export function GameScreen({
@@ -35,6 +40,16 @@ export function GameScreen({
   }));
   const table = useLocalTable({ seats, smallBlind: SMALL_BLIND, bigBlind: BIG_BLIND });
   const { state, seatsMeta, humanSeat, buttonIndex, legal, act, nextHand, handOver } = table;
+  const [showdownCardsReady, setShowdownCardsReady] = React.useState(false);
+  const [showdownEffectActive, setShowdownEffectActive] = React.useState(false);
+  const [showdownEffectKey, setShowdownEffectKey] = React.useState(0);
+  const audioUnlocked = React.useRef(false);
+
+  const unlockAudioOnce = React.useCallback(() => {
+    if (audioUnlocked.current) return;
+    audioUnlocked.current = true;
+    void unlockSfx("ui_click");
+  }, []);
   const lastLegal = React.useRef<LegalActions>({
     seat: humanSeat,
     canFold: true,
@@ -47,11 +62,43 @@ export function GameScreen({
   });
   if (legal) lastLegal.current = legal;
   const actionBarLegal = legal ?? lastLegal.current;
+  const wentToShowdown = handOver && state.result?.wentToShowdown === true;
+  const showdownContenders =
+    state.result?.showdown.filter((entry) => entry.hand !== null).length ?? 0;
+  const hasAllInShowdownPlayer = state.players.some((player) => player.status === "allin");
+  const shouldPlayShowdownEffect =
+    wentToShowdown &&
+    state.board.length === 5 &&
+    showdownContenders >= 2 &&
+    hasAllInShowdownPlayer;
+
+  React.useEffect(() => {
+    setShowdownCardsReady(false);
+    setShowdownEffectActive(false);
+
+    if (!shouldPlayShowdownEffect) {
+      setShowdownCardsReady(wentToShowdown);
+      return;
+    }
+
+    setShowdownEffectActive(true);
+    setShowdownEffectKey((key) => key + 1);
+    playSfx("hand_showdown");
+    const revealTimer = setTimeout(() => {
+      setShowdownCardsReady(true);
+      setShowdownEffectActive(false);
+      playSfx("card_flip");
+    }, SHOWDOWN_CARD_REVEAL_DELAY_MS);
+
+    return () => {
+      clearTimeout(revealTimer);
+    };
+  }, [shouldPlayShowdownEffect, state.result, wentToShowdown]);
 
   return (
     <SafeAreaView style={styles.root}>
-      <StatusBar style="light" />
-      <View style={styles.gameShell}>
+      <StatusBar hidden style="light" />
+      <View style={styles.gameShell} onTouchStart={unlockAudioOnce}>
         <View style={styles.topbar}>
           <View style={styles.topLeft}>
             <Pressable style={styles.iconBtn} onPress={onExit}>
@@ -77,9 +124,12 @@ export function GameScreen({
           seatsMeta={seatsMeta}
           humanSeat={humanSeat}
           buttonIndex={buttonIndex}
-          reveal={handOver && state.result?.wentToShowdown === true}
+          reveal={wentToShowdown && showdownCardsReady}
+          showdownEffectActive={false}
           playerAvatarIndex={playerAvatarIndex}
         />
+
+        {showdownEffectActive && <ShowdownBurst key={showdownEffectKey} />}
 
         <View style={styles.footer}>
           {handOver ? (
@@ -129,6 +179,7 @@ function ResultPanel({
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: "#02050b", alignItems: "center" },
   gameShell: {
+    position: "relative",
     flex: 1,
     width: "100%",
     maxWidth: 480,
@@ -136,19 +187,19 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   topbar: {
-    position: "relative",
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
     zIndex: 20,
     elevation: 20,
-    flexShrink: 0,
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    minHeight: 74,
-    paddingHorizontal: 13,
-    paddingVertical: 8,
-    backgroundColor: "#031728",
-    borderBottomWidth: 1,
-    borderBottomColor: "rgba(255,255,255,0.06)",
+    paddingHorizontal: 14,
+    paddingTop: 10,
+    paddingBottom: 6,
+    backgroundColor: "transparent",
   },
   topLeft: { flexDirection: "row", alignItems: "center", gap: 13 },
   iconBtn: {
@@ -161,7 +212,7 @@ const styles = StyleSheet.create({
   wifi: { color: "#2ef28a", fontWeight: "900", fontSize: 25, lineHeight: 25 },
   ping: { color: "#fff", fontWeight: "800", fontSize: 13 },
   topRight: {
-    alignItems: "center", gap: 5, backgroundColor: "rgba(52,50,52,0.96)",
+    alignItems: "center", gap: 5, backgroundColor: "rgba(52,50,52,0.78)",
     padding: 7, borderRadius: 10,
   },
   stakeBadge: { color: "#e3dfdc", fontWeight: "900", fontSize: 13 },
@@ -171,7 +222,14 @@ const styles = StyleSheet.create({
   },
   moveTxt: { color: "#ecd58d", fontWeight: "900", fontSize: 14 },
   footer: {
-    height: 128, flexShrink: 0, justifyContent: "center", backgroundColor: "#0a0b0e",
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    height: 128,
+    zIndex: 18,
+    elevation: 18,
+    justifyContent: "center", backgroundColor: "rgba(10,11,14,0.96)",
     borderTopWidth: 2, borderTopColor: "#363535",
     overflow: "hidden",
   },

@@ -1,0 +1,16 @@
+# 빌드 불필요
+node_modules
+.expo
+dist
+web-build
+*.log
+.git
+.vscode
+.idea
+.DS_Store
+coverage
+__tests__
+*.test.*
+*.spec.*
+*.md
+!README.md

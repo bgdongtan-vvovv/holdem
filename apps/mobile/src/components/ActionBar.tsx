@@ -11,12 +11,14 @@ function GradientButton({
   colors,
   textColor = "#fff",
   label,
+  subLabel,
   onPress,
   disabled = false,
 }: {
   colors: readonly [string, string];
   textColor?: string;
   label: string;
+  subLabel?: string;
   onPress: () => void;
   disabled?: boolean;
 }) {
@@ -31,6 +33,7 @@ function GradientButton({
     >
       <LinearGradient colors={colors} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={styles.btn}>
         <Text style={[styles.btnText, { color: textColor }]}>{label}</Text>
+        {subLabel && <Text style={[styles.btnSubText, { color: textColor }]}>{subLabel}</Text>}
       </LinearGradient>
     </Pressable>
   );
@@ -125,10 +128,8 @@ export function ActionBar({
             disabled={disabled}
             colors={GRAD.raise}
             textColor="#1a1a1a"
-            label={
-              `${state.currentBet > 0 ? "레이즈" : "벳"} ${fmt(raiseTo)}` +
-              (raiseTo >= legal.maxRaiseTo ? " (올인)" : "")
-            }
+            label={state.currentBet > 0 ? "레이즈" : "벳"}
+            subLabel={`${fmt(raiseTo)}${raiseTo >= legal.maxRaiseTo ? " 올인" : ""}`}
             onPress={() => onAction({ type: "raise", to: raiseTo })}
           />
         )}
@@ -171,6 +172,7 @@ const styles = StyleSheet.create({
     shadowColor: "#000", shadowOpacity: 0.3, shadowRadius: 4, shadowOffset: { width: 0, height: 2 },
   },
   btn: { flex: 1, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "rgba(255,255,255,0.15)", borderRadius: 12 },
-  btnText: { color: "#fff", fontWeight: "900", fontSize: 16 },
+  btnText: { color: "#fff", fontWeight: "900", fontSize: 16, lineHeight: 19 },
+  btnSubText: { marginTop: 1, fontWeight: "900", fontSize: 13, lineHeight: 15 },
   disabled: { opacity: 0.45 },
 });

@@ -162,10 +162,6 @@ export function useLocalTable(options: TableOptions) {
       }
       if (!isHandOver(p) && isHandOver(state)) {
         const won = (state.result?.awards.find((a) => a.seat === humanSeat)?.amount ?? 0) > 0;
-        if (state.result?.wentToShowdown) {
-          playSfx("card_flip");
-          playSfx("hand_showdown");
-        }
         setTimeout(() => playSfx("pot_win"), state.result?.wentToShowdown ? 500 : 0);
         setTimeout(() => playSfx(won ? "win" : "lose"), state.result?.wentToShowdown ? 900 : 300);
       }

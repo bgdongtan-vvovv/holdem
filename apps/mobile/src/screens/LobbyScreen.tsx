@@ -16,7 +16,7 @@ export function LobbyScreen({
 }) {
   return (
     <SafeAreaView style={styles.root}>
-      <StatusBar style="light" />
+      <StatusBar hidden style="light" />
       <ImageBackground
         source={require("../../assets/images/casino-lobby-bg.png")}
         resizeMode="cover"
@@ -56,9 +56,9 @@ export function LobbyScreen({
             </View>
           </View>
         </View>
-        <HeaderIcon icon="🍯" label="보너스" />
+        <HeaderIcon icon="♧" label="보너스" />
         <HeaderIcon icon="⇄" label="전송" />
-        <HeaderIcon icon="🪙" label="상점" />
+        <HeaderIcon icon="$" label="상점" />
       </View>
 
       <ScrollView contentContainerStyle={{ paddingBottom: 90 }} showsVerticalScrollIndicator={false}>
@@ -68,7 +68,7 @@ export function LobbyScreen({
           <Text style={styles.bannerBig}>1등 1억원</Text>
           <Text style={styles.bannerSub}>새틀라이트 매일 저녁 5, 8, 11시</Text>
           <View style={styles.bannerCta}>
-            <Text style={styles.bannerCtaTxt}>🔥 참여하기 🔥</Text>
+            <Text style={styles.bannerCtaTxt}>♨ 참여하기 ♨</Text>
           </View>
         </View>
 
@@ -81,15 +81,15 @@ export function LobbyScreen({
 
         {/* 카테고리 그리드 */}
         <View style={styles.grid}>
-          <GameTile emoji="🂡" label="홀덤" big color="#b0413e" onPress={onStartGame} />
-          <GameTile emoji="🏆" label="토너먼트" big color="#c9962b" onPress={onStartGame} />
-          <GameTile emoji="🍍" label="OFC" big color="#2f80ed" onPress={onStartGame} />
+          <GameTile emoji="A♠" label="홀덤" big onPress={onStartGame} />
+          <GameTile emoji="♕" label="토너먼트" big onPress={onStartGame} />
+          <GameTile emoji="2♠" label="OFC" big onPress={onStartGame} />
         </View>
         <View style={styles.grid}>
-          <GameTile emoji="🎰" label="앤티" color="#e0a020" onPress={onStartGame} />
-          <GameTile emoji="🃏" label="오마하" color="#9b59b6" onPress={onStartGame} />
-          <GameTile emoji="2️⃣1️⃣" label="블랙잭" color="#c9962b" onPress={onStartGame} />
-          <GameTile emoji="🎴" label="바카라" color="#2980b9" onPress={onStartGame} />
+          <GameTile emoji="◎" label="앤티" onPress={onStartGame} />
+          <GameTile emoji="A A A" label="오마하" onPress={onStartGame} />
+          <GameTile emoji="21" label="블랙잭" onPress={onStartGame} />
+          <GameTile emoji="A♠" label="바카라" onPress={onStartGame} />
         </View>
       </ScrollView>
 
@@ -108,7 +108,7 @@ export function LobbyScreen({
 function HeaderIcon({ icon, label }: { icon: string; label: string }) {
   return (
     <View style={styles.hIcon}>
-      <Text style={{ fontSize: 22 }}>{icon}</Text>
+      <Text style={styles.hIconGlyph}>{icon}</Text>
       <Text style={styles.hIconLabel}>{label}</Text>
     </View>
   );
@@ -130,12 +130,12 @@ function ModeCard({
 }
 
 function GameTile({
-  emoji, label, color, big, onPress,
-}: { emoji: string; label: string; color: string; big?: boolean; onPress: () => void }) {
+  emoji, label, big, onPress,
+}: { emoji: string; label: string; big?: boolean; onPress: () => void }) {
   return (
     <Pressable style={[styles.tile, big && styles.tileBig]} onPress={onPress}>
-      <View style={[styles.tileArt, { backgroundColor: color }]}>
-        <Text style={{ fontSize: big ? 40 : 30 }}>{emoji}</Text>
+      <View style={styles.tileArt}>
+        <Text style={[styles.tileGlyph, big && styles.tileGlyphBig]}>{emoji}</Text>
       </View>
       <Text style={styles.tileLabel}>{label}</Text>
     </Pressable>
@@ -155,7 +155,7 @@ const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: "#080706" },
   backdropShade: {
     ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.38)",
+    backgroundColor: "rgba(0,0,0,0.58)",
   },
   topRow: {
     flexDirection: "row", justifyContent: "space-between", alignItems: "center",
@@ -167,9 +167,15 @@ const styles = StyleSheet.create({
   menu: { color: theme.text, fontSize: 26, fontWeight: "900" },
 
   profile: {
-    flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingBottom: 12, gap: 6,
-    borderBottomWidth: 1, borderBottomColor: "rgba(242,193,78,0.34)",
-    backgroundColor: "rgba(15,14,13,0.82)",
+    flexDirection: "row", alignItems: "center", paddingHorizontal: 16, paddingVertical: 14, gap: 6,
+    marginHorizontal: 0,
+    borderTopWidth: 1,
+    borderBottomWidth: 1,
+    borderColor: "rgba(214,169,88,0.18)",
+    backgroundColor: "rgba(18,18,17,0.82)",
+    shadowColor: "#000",
+    shadowOpacity: 0.55,
+    shadowRadius: 14,
   },
   avatar: {
     width: 64, height: 64, alignItems: "center", justifyContent: "center",
@@ -179,60 +185,88 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(0,0,0,0.72)", paddingHorizontal: 5, paddingVertical: 1,
     borderRadius: 6, overflow: "hidden",
   },
-  pname: { color: theme.text, fontWeight: "800", fontSize: 16 },
+  pname: { color: theme.text, fontWeight: "800", fontSize: 19 },
   badges: { flexDirection: "row", gap: 6, marginTop: 4 },
   badge: {
     width: 22, height: 22, borderRadius: 6, borderWidth: 1.5,
     alignItems: "center", justifyContent: "center", backgroundColor: "#1a1d24",
   },
   badgeTxt: { color: "#c3ccd8", fontWeight: "900", fontSize: 11 },
-  hIcon: { alignItems: "center", width: 52 },
-  hIconLabel: { color: theme.textMuted, fontSize: 11, marginTop: 2, fontWeight: "600" },
+  hIcon: { alignItems: "center", width: 58 },
+  hIconGlyph: {
+    color: "#d4b16d",
+    fontSize: 24,
+    lineHeight: 26,
+    fontWeight: "300",
+    textShadowColor: "rgba(214,169,88,0.34)",
+    textShadowRadius: 7,
+  },
+  hIconLabel: { color: "#bba77d", fontSize: 12, marginTop: 4, fontWeight: "500" },
 
   banner: {
-    margin: 14, borderRadius: 14, padding: 18, minHeight: 150,
-    backgroundColor: "rgba(52,9,8,0.94)", borderWidth: 1, borderColor: "#8b3f24",
+    margin: 14, borderRadius: 14, padding: 22, minHeight: 196,
+    backgroundColor: "rgba(18,17,15,0.88)", borderWidth: 1, borderColor: "rgba(211,162,81,0.72)",
     justifyContent: "center",
-    shadowColor: "#e46b2c", shadowOpacity: 0.32, shadowRadius: 14,
+    shadowColor: "#d9ad62", shadowOpacity: 0.18, shadowRadius: 18,
   },
-  bannerSmall: { color: "#ff5a4d", fontSize: 22, fontWeight: "900" },
-  bannerBig: { color: theme.gold, fontSize: 44, fontWeight: "900", letterSpacing: 1 },
-  bannerSub: { color: theme.text, fontSize: 12, marginTop: 6, fontWeight: "600" },
+  bannerSmall: { color: "#d2a45e", fontSize: 20, fontWeight: "800" },
+  bannerBig: {
+    color: "#e8c27b",
+    fontSize: 48,
+    fontWeight: "900",
+    letterSpacing: 1,
+    textShadowColor: "rgba(0,0,0,0.82)",
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 4,
+  },
+  bannerSub: { color: "#e7e2d8", fontSize: 13, marginTop: 12, fontWeight: "600" },
   bannerCta: {
-    alignSelf: "flex-start", marginTop: 12, backgroundColor: theme.goldDeep,
-    paddingHorizontal: 20, paddingVertical: 8, borderRadius: 8,
+    alignSelf: "flex-start", marginTop: 18,
+    backgroundColor: "rgba(0,0,0,0.16)",
+    paddingHorizontal: 24, paddingVertical: 11, borderRadius: 8,
+    borderWidth: 1,
+    borderColor: "rgba(214,169,88,0.86)",
   },
-  bannerCtaTxt: { color: "#1a1a1a", fontWeight: "900", fontSize: 14 },
+  bannerCtaTxt: { color: "#e7c37c", fontWeight: "900", fontSize: 15 },
 
   modeRow: { flexDirection: "row", paddingHorizontal: 10, gap: 8 },
   modeCard: {
-    flex: 1, backgroundColor: "rgba(35,31,31,0.96)", borderRadius: 12, padding: 10, alignItems: "center",
-    borderWidth: 1, borderColor: "rgba(224,184,88,0.5)",
-    shadowColor: theme.gold, shadowOpacity: 0.25, shadowRadius: 8,
+    flex: 1, backgroundColor: "rgba(27,27,26,0.9)", borderRadius: 12, padding: 14, alignItems: "center",
+    borderWidth: 1, borderColor: "rgba(214,169,88,0.58)",
+    shadowColor: "#000", shadowOpacity: 0.45, shadowRadius: 10,
   },
-  modeTitle: { color: theme.text, fontWeight: "900", fontSize: 15 },
-  modeValue: { color: theme.text, fontWeight: "900", fontSize: 18, marginTop: 6 },
-  modeSub: { color: "#5fd0ff", fontSize: 10, marginTop: 4, fontWeight: "600" },
+  modeTitle: { color: "#f2efe8", fontWeight: "900", fontSize: 15 },
+  modeValue: { color: "#f5f1e8", fontWeight: "900", fontSize: 20, marginTop: 14 },
+  modeSub: { color: "#c9c1b5", fontSize: 11, marginTop: 7, fontWeight: "600" },
   modeCta: {
-    marginTop: 8, backgroundColor: "#c0392b", borderRadius: 6, paddingVertical: 7,
-    width: "100%", alignItems: "center",
+    marginTop: 15, backgroundColor: "rgba(0,0,0,0.2)", borderRadius: 6, paddingVertical: 8,
+    width: "100%", alignItems: "center", borderWidth: 1, borderColor: "rgba(214,169,88,0.74)",
   },
-  modeCtaTxt: { color: "#fff", fontWeight: "800", fontSize: 13 },
+  modeCtaTxt: { color: "#d9b36a", fontWeight: "800", fontSize: 13 },
 
-  grid: { flexDirection: "row", justifyContent: "center", paddingHorizontal: 10, gap: 10, marginTop: 16 },
+  grid: { flexDirection: "row", justifyContent: "center", paddingHorizontal: 10, gap: 18, marginTop: 20 },
   tile: { alignItems: "center", width: 78 },
   tileBig: { width: 104 },
   tileArt: {
     width: "100%", aspectRatio: 1, borderRadius: 14, alignItems: "center", justifyContent: "center",
-    borderWidth: 2, borderColor: "rgba(242,193,78,0.5)",
+    backgroundColor: "rgba(25,25,24,0.82)",
+    borderWidth: 1.2, borderColor: "rgba(214,169,88,0.62)",
     shadowColor: "#000", shadowOpacity: 0.75, shadowRadius: 8,
     shadowOffset: { width: 0, height: 5 },
   },
-  tileLabel: { color: theme.gold, fontWeight: "800", fontSize: 13, marginTop: 6 },
+  tileGlyph: {
+    color: "#d7b574",
+    fontSize: 24,
+    fontWeight: "300",
+    textShadowColor: "rgba(214,169,88,0.34)",
+    textShadowRadius: 8,
+  },
+  tileGlyphBig: { fontSize: 30 },
+  tileLabel: { color: "#d7b574", fontWeight: "800", fontSize: 13, marginTop: 8 },
 
   tabbar: {
     position: "absolute", left: 0, right: 0, bottom: 0, height: 74,
-    flexDirection: "row", backgroundColor: "rgba(13,13,13,0.98)", borderTopWidth: 1, borderTopColor: "#6d5729",
+    flexDirection: "row", backgroundColor: "rgba(13,13,13,0.98)", borderTopWidth: 1, borderTopColor: "rgba(214,169,88,0.42)",
     paddingBottom: 8, paddingTop: 8,
   },
   tab: { flex: 1, alignItems: "center", gap: 3 },

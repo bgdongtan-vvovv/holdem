@@ -125,17 +125,17 @@ export const DENOMINATIONS = [
 ] as const;
 
 const CHIP_IMAGE_SOURCES: Record<number, ImageSourcePropType> = {
-  10: require("../../assets/images/chips/chip100.png") as ImageSourcePropType,
-  20: require("../../assets/images/chips/chip200.png") as ImageSourcePropType,
-  50: require("../../assets/images/chips/chip500.png") as ImageSourcePropType,
-  100: require("../../assets/images/chips/chip1000.png") as ImageSourcePropType,
-  500: require("../../assets/images/chips/chip10000.png") as ImageSourcePropType,
-  1000: require("../../assets/images/chips/chip100000.png") as ImageSourcePropType,
+  10: require("../../assets/images/chips/optimized/chip100.png") as ImageSourcePropType,
+  20: require("../../assets/images/chips/optimized/chip200.png") as ImageSourcePropType,
+  50: require("../../assets/images/chips/optimized/chip500.png") as ImageSourcePropType,
+  100: require("../../assets/images/chips/optimized/chip1000.png") as ImageSourcePropType,
+  500: require("../../assets/images/chips/optimized/chip10000.png") as ImageSourcePropType,
+  1000: require("../../assets/images/chips/optimized/chip100000.png") as ImageSourcePropType,
 };
 
 export type ChipStackVisual = { value: number; count: number; color: string };
 
-const MAX_CHIPS_PER_STACK = 18;
+const MAX_CHIPS_PER_STACK = 14;
 
 /** 금액을 단위별 실제 칩 개수로 분해해 쌓는다. */
 export function ChipPile({
@@ -168,7 +168,7 @@ export function ChipPile({
   const visibleStacks = stacks.length > 0
     ? stacks.slice(0, 12)
     : [{ value: 100, color: DENOMINATIONS[DENOMINATIONS.length - 1].color, count: 1 }];
-  const layout = realisticPileLayout(visibleStacks.length, chipSize);
+  const layout = realisticPileLayout(visibleStacks, chipSize);
   const previousVisibleCounts = visibleStacks.map((stack, index) => {
     const previous = previousStacks.current[index];
     return previous && previous.value === stack.value ? previous.count : 0;
@@ -222,6 +222,7 @@ export function appendChipDelta(existing: ChipStackVisual[], delta: number): Chi
   for (const denomination of DENOMINATIONS) {
     const count = Math.floor(remaining / denomination.value);
     remaining %= denomination.value;
+
     for (let i = 0; i < count; i += 1) {
       const openStackIndex = findOpenStackIndex(next, denomination.value);
       if (openStackIndex >= 0) {
@@ -236,7 +237,7 @@ export function appendChipDelta(existing: ChipStackVisual[], delta: number): Chi
 }
 
 function findOpenStackIndex(stacks: ChipStackVisual[], value: number): number {
-  for (let i = stacks.length - 1; i >= 0; i -= 1) {
+  for (let i = 0; i < stacks.length; i += 1) {
     const stack = stacks[i]!;
     if (stack.value === value && stack.count < MAX_CHIPS_PER_STACK) return i;
   }
@@ -246,25 +247,44 @@ function findOpenStackIndex(stacks: ChipStackVisual[], value: number): number {
 export function chipPileMetrics(size: number) {
   return {
     width: size * 9.6,
-    height: size * 4.0,
+    height: size * 4.3,
   };
 }
 
-export function chipStackLayout(count: number, size: number) {
-  return realisticPileLayout(count, size);
+export function chipStackLayout(stacks: ChipStackVisual[], size: number) {
+  return realisticPileLayout(stacks, size);
 }
 
-function realisticPileLayout(count: number, size: number) {
-  const gap = size * 1.48;
-  const totalWidth = Math.max(0, count - 1) * gap;
-  const start = Math.max(0, (size * 8.15 - totalWidth) / 2);
+function realisticPileLayout(stacks: ChipStackVisual[], size: number) {
+  const center = 4.08;
+  const ground = 0.36;
+  const slots = [
+    { x: -2.25, y: 1.18, depth: 1 },
+    { x: -0.75, y: 1.18, depth: 2 },
+    { x: 0.75, y: 1.18, depth: 3 },
+    { x: 2.25, y: 1.18, depth: 4 },
+    { x: -1.5, y: 0, depth: 8 },
+    { x: 0, y: 0, depth: 9 },
+    { x: 1.5, y: 0, depth: 10 },
+    { x: 3.0, y: 0, depth: 11 },
+    { x: -3.0, y: 0, depth: 7 },
+    { x: -2.25, y: 2.36, depth: 0 },
+    { x: -0.75, y: 2.36, depth: 0 },
+    { x: 0.75, y: 2.36, depth: 0 },
+  ];
 
-  return Array.from({ length: count }).map((_, index) => ({
-    left: start + index * gap,
-    lift: 0,
-    zIndex: index + 1,
-    extra: 0,
-  }));
+  return stacks.map((stack, index) => {
+    const slot = slots[index % slots.length]!;
+    const layer = Math.floor(index / slots.length);
+    const x = slot.x + layer * 0.34;
+
+    return {
+      left: (center + x) * size,
+      lift: Math.max(0, ground + slot.y - layer * 0.08) * size,
+      zIndex: 20 + slot.depth * 4 + layer * 36 + index,
+      extra: 0,
+    };
+  });
 }
 
 function ChipColumn({

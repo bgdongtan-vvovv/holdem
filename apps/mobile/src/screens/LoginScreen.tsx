@@ -9,7 +9,7 @@ export function LoginScreen({ onLogin }: { onLogin: () => void }) {
 
   return (
     <SafeAreaView style={styles.root}>
-      <StatusBar style="light" />
+      <StatusBar hidden style="light" />
       <ImageBackground
         source={require("../../assets/images/casino-lobby-bg.png")}
         resizeMode="cover"
