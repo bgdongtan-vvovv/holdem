@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { Platform } from "react-native";
+import { Platform, View, Text, Pressable } from "react-native";
 import { AppProvider, LoginScreen } from "./src/screens/LoginScreen";
 import { LobbyScreen } from "./src/screens/LobbyScreen";
 import { GameScreen } from "./src/screens/GameScreen";
@@ -9,7 +9,7 @@ import { playMusic, stopMusic } from "./src/sound/music";
 type Screen = "login" | "lobby" | "game";
 
 export default function App() {
-  const [screen, setScreen] = useState<Screen>("login");
+  const [screen, setScreen] = useState<Screen>("lobby");
   const [playerAvatarIndex, setPlayerAvatarIndex] = useState(0);
 
   useEffect(() => {
@@ -22,39 +22,41 @@ export default function App() {
 
   return (
     <AppProvider>
-      {screen === "login" && (
-        <LoginScreen
-          onLogin={async () => {
-            await enterMobileWebFullscreen();
-            await unlockSfx("ui_confirm");
-            void playMusic("lobby");
-            setScreen("lobby");
-          }}
-        />
-      )}
-      {screen === "lobby" && (
-        <LobbyScreen
-          playerAvatarIndex={playerAvatarIndex}
-          onAvatarChange={setPlayerAvatarIndex}
-          onStartGame={async () => {
-            await enterMobileWebFullscreen();
-            await unlockSfx("ui_confirm");
-            void playMusic("table");
-            setScreen("game");
-          }}
-        />
-      )}
-      {screen === "game" && (
-        <GameScreen
-          playerAvatarIndex={playerAvatarIndex}
-          onExit={async () => {
-            await enterMobileWebFullscreen();
-            await unlockSfx("ui_back");
-            void playMusic("lobby");
-            setScreen("lobby");
-          }}
-        />
-      )}
+      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: '#1a1a1a' }}>
+        <Text style={{ color: '#fff', fontSize: 24, marginBottom: 20 }}>SSun Holdem</Text>
+        {screen === "lobby" && (
+          <>
+            <Text style={{ color: '#ffd700', fontSize: 18, marginBottom: 30 }}>로비 화면</Text>
+            <Pressable
+              style={{ backgroundColor: '#ffd700', padding: 15, borderRadius: 8 }}
+              onPress={async () => {
+                await enterMobileWebFullscreen();
+                await unlockSfx("ui_confirm");
+                void playMusic("table");
+                setScreen("game");
+              }}
+            >
+              <Text style={{ color: '#000', fontSize: 16, fontWeight: 'bold' }}>게임 시작</Text>
+            </Pressable>
+          </>
+        )}
+        {screen === "game" && (
+          <>
+            <Text style={{ color: '#ffd700', fontSize: 18, marginBottom: 30 }}>게임 화면</Text>
+            <Pressable
+              style={{ backgroundColor: '#ffd700', padding: 15, borderRadius: 8 }}
+              onPress={async () => {
+                await enterMobileWebFullscreen();
+                await unlockSfx("ui_back");
+                void playMusic("lobby");
+                setScreen("lobby");
+              }}
+            >
+              <Text style={{ color: '#000', fontSize: 16, fontWeight: 'bold' }}>로비로 돌아가기</Text>
+            </Pressable>
+          </>
+        )}
+      </View>
     </AppProvider>
   );
 }
