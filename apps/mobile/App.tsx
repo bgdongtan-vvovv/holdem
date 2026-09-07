@@ -42,9 +42,31 @@ export default function App() {
         )}
         {screen === "game" && (
           <>
-            <Text style={{ color: '#ffd700', fontSize: 18, marginBottom: 30 }}>게임 화면</Text>
+            <Text style={{ color: '#ffd700', fontSize: 18, marginBottom: 20 }}>포커 테이블</Text>
+            <View style={{ width: '80%', height: 300, backgroundColor: '#0a5c3c', borderRadius: 150, borderWidth: 3, borderColor: '#ffd700', alignItems: 'center', justifyContent: 'center', marginBottom: 30 }}>
+              <Text style={{ color: '#ffd700', fontSize: 24, fontWeight: 'bold' }}>♠ ♥ ♦ ♣</Text>
+              <Text style={{ color: '#fff', fontSize: 14, marginTop: 10 }}>게임 중...</Text>
+            </View>
             <Pressable
-              style={{ backgroundColor: '#ffd700', padding: 15, borderRadius: 8 }}
+              style={{ backgroundColor: '#ffd700', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 6, marginBottom: 10 }}
+              onPress={() => {}}
+            >
+              <Text style={{ color: '#000', fontSize: 14, fontWeight: 'bold' }}>폴드</Text>
+            </Pressable>
+            <Pressable
+              style={{ backgroundColor: '#ffd700', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 6, marginBottom: 10 }}
+              onPress={() => {}}
+            >
+              <Text style={{ color: '#000', fontSize: 14, fontWeight: 'bold' }}>콜</Text>
+            </Pressable>
+            <Pressable
+              style={{ backgroundColor: '#ffd700', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 6, marginBottom: 20 }}
+              onPress={() => {}}
+            >
+              <Text style={{ color: '#000', fontSize: 14, fontWeight: 'bold' }}>레이즈</Text>
+            </Pressable>
+            <Pressable
+              style={{ backgroundColor: '#666', padding: 12, borderRadius: 6 }}
               onPress={async () => {
                 await enterMobileWebFullscreen();
                 await unlockSfx("ui_back");
@@ -52,7 +74,7 @@ export default function App() {
                 setScreen("lobby");
               }}
             >
-              <Text style={{ color: '#000', fontSize: 16, fontWeight: 'bold' }}>로비로 돌아가기</Text>
+              <Text style={{ color: '#fff', fontSize: 14, fontWeight: 'bold' }}>나가기</Text>
             </Pressable>
           </>
         )}
