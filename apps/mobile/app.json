@@ -1,15 +1,16 @@
 {
   "expo": {
-    "name": "Holdem",
+    "name": "SSun Game",
     "owner": "davidkang3323",
-    "slug": "holdem",
+    "slug": "ssun-game",
     "version": "0.1.0",
-    "orientation": "portrait",
+    "orientation": "default",
     "userInterfaceStyle": "dark",
-    "backgroundColor": "#0b3d2e",
+    "backgroundColor": "#111111",
     "assetBundlePatterns": [
       "assets/images/**/*.png",
       "assets/cards/**/*.png",
+      "assets/brand/**/*.png",
       "assets/avatars/**/*.png",
       "assets/sounds/**/*.mp3",
       "assets/sounds/**/*.wav"

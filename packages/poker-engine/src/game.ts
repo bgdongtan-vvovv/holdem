@@ -6,7 +6,8 @@
  *
  * 사용 흐름:
  *   let s = startHand(config);
- *   while (!isHandOver(s)) s = applyAction(s, action);
+ *   while (s.street !== "showdown" && !isHandOver(s)) s = applyAction(s, action);
+ *   if (s.street === "showdown") s = resolveShowdown(s);
  *   // s.result 에 승자/분배 결과
  *
  * 알려진 단순화(v1): all-in 이 정규 레이즈 미만(short all-in)일 때도
@@ -368,13 +369,13 @@ function advance(s: HandState): void {
   do {
     if (!nextStreet(s)) {
       // 리버까지 끝 → 쇼다운
-      finishHand(s);
+      enterShowdown(s);
       return;
     }
   } while (!canStillBet && s.street !== "showdown");
 
   if (!canStillBet) {
-    finishHand(s);
+    enterShowdown(s);
     return;
   }
 
@@ -420,6 +421,19 @@ function startBettingRound(s: HandState): void {
 // ─────────────────────────────────────────────────────────────────────────
 // 쇼다운 / 팟 분배
 // ─────────────────────────────────────────────────────────────────────────
+
+function enterShowdown(s: HandState): void {
+  s.street = "showdown";
+  s.actingIndex = -1;
+  s.log.push("쇼다운");
+}
+
+export function resolveShowdown(state: HandState): HandState {
+  if (state.street !== "showdown") throw new Error("쇼다운 상태가 아닙니다");
+  const s = cloneState(state);
+  finishHand(s);
+  return s;
+}
 
 /** totalCommitted 기여도로 메인팟 + 사이드팟들을 만든다. */
 export function buildPots(players: PlayerState[]): Pot[] {

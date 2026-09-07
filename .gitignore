@@ -28,6 +28,7 @@ npm-debug.log*
 
 # os / editor
 .DS_Store
+._*
 .idea/
 .vscode/*
 !.vscode/extensions.json
@@ -37,3 +38,6 @@ npm-debug.log*
 
 # test coverage
 coverage/
+
+# local design brainstorming sessions
+.superpowers/

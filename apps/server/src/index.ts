@@ -22,6 +22,7 @@ import { EVENTS } from "@holdem/shared";
 import { Table } from "./table.js";
 
 const PORT = Number(process.env.PORT ?? 4000);
+const SHOWDOWN_DELAY_MS = 5000;
 
 const httpServer = createServer((_, res) => {
   res.writeHead(200, { "content-type": "text/plain" });
@@ -60,6 +61,11 @@ io.on("connection", (socket) => {
     try {
       table.act(socket.id, p.action);
       broadcastState();
+      if (table.isAwaitingShowdown()) {
+        setTimeout(() => {
+          if (table.resolveShowdown()) broadcastState();
+        }, SHOWDOWN_DELAY_MS);
+      }
       // TODO(형섭): 핸드 종료 시 일정 시간 후 maybeStartHand + broadcast
     } catch (e) {
       socket.emit(EVENTS.error, { code: "ACTION_FAILED", message: msg(e) });

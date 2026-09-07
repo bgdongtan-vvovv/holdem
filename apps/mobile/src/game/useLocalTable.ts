@@ -8,6 +8,7 @@ import {
   applyAction,
   isHandOver,
   legalActions,
+  resolveShowdown,
   startHand,
   type Action,
   type HandState,
@@ -193,6 +194,12 @@ export function useLocalTable(options: TableOptions) {
     );
   }, [lockFor, options.bigBlind, options.smallBlind]);
 
+  const completeShowdown = useCallback(() => {
+    setState((current) =>
+      current.street === "showdown" ? resolveShowdown(current) : current,
+    );
+  }, []);
+
   return {
     state,
     seatsMeta: seatsMeta.current,
@@ -200,6 +207,7 @@ export function useLocalTable(options: TableOptions) {
     buttonIndex: buttonIndex.current,
     legal,
     act,
+    completeShowdown,
     nextHand,
     handOver: isHandOver(state),
     animationLocked,

@@ -440,10 +440,11 @@ export function ShowdownBurst() {
               outputRange: [0, 1, 1],
             }),
             transform: [
+              { translateY: -80 },
               {
                 scale: progress.interpolate({
                   inputRange: [0, 0.28, 1],
-                  outputRange: [0.78, 0.8, 0.8],
+                  outputRange: [0.9, 1, 1],
                 }),
               },
             ],
@@ -904,20 +905,15 @@ const styles = StyleSheet.create({
     justifyContent: "center",
   },
   showdownVideoWrap: {
-    position: "absolute",
-    top: "37%",
-    left: "50%",
-    width: 288,
-    height: 176,
-    marginLeft: -144,
-    marginTop: -88,
+    width: "82%",
+    aspectRatio: 288 / 176,
     alignItems: "center",
     justifyContent: "center",
     overflow: "hidden",
   },
   showdownVideo: {
-    width: 288,
-    height: 176,
+    width: "100%",
+    height: "100%",
   },
   showdownFlare: {
     position: "absolute",

@@ -5,6 +5,7 @@ import {
   applyAction,
   buildPots,
   isHandOver,
+  resolveShowdown,
   startHand,
   totalPot,
   type HandState,
@@ -90,6 +91,11 @@ describe("쇼다운", () => {
       s = applyAction(s, { type: "check" }); // 포스트플랍 첫 행동 = B
       s = applyAction(s, { type: "check" }); // A
     }
+    expect(s.street).toBe("showdown");
+    expect(isHandOver(s)).toBe(false);
+    expect(s.result).toBeUndefined();
+
+    s = resolveShowdown(s);
     expect(isHandOver(s)).toBe(true);
     expect(s.result!.wentToShowdown).toBe(true);
     // A 가 AA 로 승리, 팟 20
@@ -115,6 +121,7 @@ describe("쇼다운", () => {
       s = applyAction(s, { type: "check" });
       s = applyAction(s, { type: "check" });
     }
+    s = resolveShowdown(s);
     expect(s.result!.awards.find((a) => a.seat === 0)!.amount).toBe(10);
     expect(s.result!.awards.find((a) => a.seat === 1)!.amount).toBe(10);
     expect(s.players[0]!.stack).toBe(100);
@@ -174,6 +181,9 @@ describe("칩 보존", () => {
     });
     s = applyAction(s, { type: "allin" }); // A 올인 100
     s = applyAction(s, { type: "call" }); // B 콜 올인
+    expect(s.street).toBe("showdown");
+    expect(isHandOver(s)).toBe(false);
+    s = resolveShowdown(s);
     expect(isHandOver(s)).toBe(true);
     expect(totalChips(s)).toBe(200);
     expect(s.players[0]!.stack).toBe(200); // A 가 AA 로 전부 획득

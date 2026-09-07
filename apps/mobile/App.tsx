@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import { Platform } from "react-native";
-import { LoginScreen } from "./src/screens/LoginScreen";
+import { AppProvider, LoginScreen } from "./src/screens/LoginScreen";
 import { LobbyScreen } from "./src/screens/LobbyScreen";
 import { GameScreen } from "./src/screens/GameScreen";
 import { initSfx, unlockSfx } from "./src/sound/sfx";
@@ -20,9 +20,9 @@ export default function App() {
     };
   }, []);
 
-  switch (screen) {
-    case "login":
-      return (
+  return (
+    <AppProvider>
+      {screen === "login" && (
         <LoginScreen
           onLogin={async () => {
             await enterMobileWebFullscreen();
@@ -31,9 +31,8 @@ export default function App() {
             setScreen("lobby");
           }}
         />
-      );
-    case "lobby":
-      return (
+      )}
+      {screen === "lobby" && (
         <LobbyScreen
           playerAvatarIndex={playerAvatarIndex}
           onAvatarChange={setPlayerAvatarIndex}
@@ -44,9 +43,8 @@ export default function App() {
             setScreen("game");
           }}
         />
-      );
-    case "game":
-      return (
+      )}
+      {screen === "game" && (
         <GameScreen
           playerAvatarIndex={playerAvatarIndex}
           onExit={async () => {
@@ -56,8 +54,9 @@ export default function App() {
             setScreen("lobby");
           }}
         />
-      );
-  }
+      )}
+    </AppProvider>
+  );
 }
 
 function installMobileFullscreenUnlock(): void {

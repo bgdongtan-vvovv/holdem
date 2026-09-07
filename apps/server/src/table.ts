@@ -19,6 +19,7 @@ import {
   HAND_CATEGORY_NAMES,
   isHandOver,
   legalActions,
+  resolveShowdown,
   startHand,
   type Action,
   type HandState,
@@ -107,6 +108,13 @@ export class Table {
     this.buttonSeat = (this.buttonSeat + 1) % SEAT_COUNT;
   }
 
+  resolveShowdown(): boolean {
+    if (!this.hand || this.hand.street !== "showdown") return false;
+    this.hand = resolveShowdown(this.hand);
+    this.settle();
+    return true;
+  }
+
   /** viewerSocketId 관점의 정제된 상태. */
   publicState(viewerSocketId: string): PublicTableState {
     const viewer = [...this.occupants.values()].find((o) => o.socketId === viewerSocketId);
@@ -189,5 +197,9 @@ export class Table {
 
   isActive(): boolean {
     return this.hand !== null && !isHandOver(this.hand);
+  }
+
+  isAwaitingShowdown(): boolean {
+    return this.hand?.street === "showdown";
   }
 }
