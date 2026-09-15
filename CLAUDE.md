@@ -63,3 +63,15 @@ npx tsx apps/server/examples/smoke-client.ts              # 2인 접속 스모�
 게임(엔진·앱·디자인·사운드)·소켓 계약·서버 스켈레톤 완료.
 **남은 것: 온라인 멀티플레이어 서버 프로덕션화** (인증·다중테이블·타임뱅크·핸드
 라이프사이클·영속화/지갑·안티치트) — 자세한 TODO는 HANDOFF.md 참조.
+
+## 멀티에이전트 워크플로우 (Orca)
+
+작업 배분(에이전트 호출) 전에 반드시 읽을 것:
+
+- [`ORCA_DEV_WORKFLOW.md`](ORCA_DEV_WORKFLOW.md) — 프로젝트 운영 규칙 (Astra=비주얼 / Claude=프론트 아키텍처 / Codex=구현, 에스컬레이션·크레딧 절약)
+- [`.claude/skills/visual-first-multi-agent-development/SKILL.md`](.claude/skills/visual-first-multi-agent-development/SKILL.md) — 재사용 스킬 (에이전트 역할·에스컬레이션 규칙)
+- 팩 설명: [`docs/ORCA_SKILLPACK_README.md`](docs/ORCA_SKILLPACK_README.md)
+
+정책: **Codex가 기본 구현 에이전트.** Astra는 비주얼 생성/리뷰, Claude는 복잡한 프론트 아키텍처/인터랙션에만 호출.
+Astra/Claude 에스컬레이션 전에 확정된 결정 로그(`docs/DESIGN_SYSTEM.md`, `docs/FRONTEND_ARCHITECTURE.md`)를 먼저 확인해 재사용.
+(위 두 결정 로그는 아직 이 모바일 코드 기준으로는 미작성 — 필요 시 생성.)
