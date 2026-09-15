@@ -1,4 +1,4 @@
 interface:
-  display_name: "Holdem Reference Design"
-  short_description: "Preserve the project poker visual language"
-  default_prompt: "Use $holdem-reference-design to design or review this poker interface against the bundled references."
+  display_name: "Holdem Visual & Motion Design"
+  short_description: "Preserve poker visuals, motion, and effects"
+  default_prompt: "Use $holdem-reference-design to design or review this poker interface and its game effects against the bundled references."

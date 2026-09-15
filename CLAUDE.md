@@ -72,6 +72,6 @@ npx tsx apps/server/examples/smoke-client.ts              # 2인 접속 스모�
 - [`.claude/skills/visual-first-multi-agent-development/SKILL.md`](.claude/skills/visual-first-multi-agent-development/SKILL.md) — 재사용 스킬 (에이전트 역할·에스컬레이션 규칙)
 - 팩 설명: [`docs/ORCA_SKILLPACK_README.md`](docs/ORCA_SKILLPACK_README.md)
 
-정책: **Codex가 기본 구현 에이전트.** Astra는 비주얼 생성/리뷰, Claude는 복잡한 프론트 아키텍처/인터랙션에만 호출.
+정책: **Codex가 기본 구현 에이전트.** Astra는 비주얼 생성/리뷰, Claude는 복잡한 프론트 아키텍처/인터랙션, Gemini는 대용량 컨텍스트 리서치/분석(코드베이스 전체 서베이, 긴 문서·로그 요약)에만 호출 — 결과는 리서치 브리프로 Claude/Codex에 전달.
 Astra/Claude 에스컬레이션 전에 확정된 결정 로그(`docs/DESIGN_SYSTEM.md`, `docs/FRONTEND_ARCHITECTURE.md`)를 먼저 확인해 재사용.
 (위 두 결정 로그는 아직 이 모바일 코드 기준으로는 미작성 — 필요 시 생성.)

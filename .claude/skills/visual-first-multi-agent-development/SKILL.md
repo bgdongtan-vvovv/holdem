@@ -11,9 +11,10 @@ This skill defines a cost-conscious multi-agent workflow for UI-heavy software p
 
 Core rule:
 
-**Astra owns visual creation and visual direction.  
-Claude owns complex frontend architecture and interaction design.  
-Codex owns implementation, iteration, testing, and routine fixes.**
+**Astra owns visual creation and visual direction.
+Claude owns complex frontend architecture and interaction design.
+Codex owns implementation, iteration, testing, and routine fixes.
+Gemini owns research and analysis over large amounts of context.**
 
 The goal is to preserve Astra-level visual quality while preventing expensive agents from being used for work that Codex can perform efficiently.
 
@@ -71,6 +72,28 @@ Claude is responsible for:
 
 Claude should NOT automatically redesign visuals already approved by Astra.
 
+### Gemini — Research / Large-Context Analyst
+
+Use Gemini when a task requires reading or reasoning over a large amount of context before a decision can safely be made.
+
+Gemini is responsible for:
+
+- Surveying the whole codebase or many files for a cross-cutting concern
+- Summarizing long external docs, RFCs, or third-party API references
+- Analyzing large logs or long game-history/session data for patterns
+- Comparing multiple large design/spec documents for consistency
+- Surveying external libraries/approaches before Claude or Codex commits to one
+- Producing a research brief that Claude or Codex can act on
+
+Gemini should NOT be used for:
+
+- Visual creation, invention, or judgment (that is Astra)
+- Architecture or interaction-design decisions (that is Claude)
+- Writing or editing production code (that is Codex)
+- Small, single-file lookups Codex can grep itself
+
+Gemini's output is a research brief or analysis summary, never code or visual direction. Hand the brief to Claude (architecture) or Codex (implementation) to act on.
+
 ### Codex — Implementation / Test / Iteration
 
 Codex is the default development agent.
@@ -122,6 +145,20 @@ Do NOT escalate for:
 - Implement an already approved visual
 - Correct responsive breakpoints
 
+### Codex → Gemini
+
+Escalate to Gemini when:
+
+- The task requires reading/comparing many files, long docs, or large logs before implementation is safe
+- Codex would otherwise need to spend a large amount of effort just gathering context, not writing code
+- A decision depends on understanding patterns across the whole codebase or session/game-history data
+- An unfamiliar external library or API needs to be surveyed before Claude or Codex commits to an approach
+
+Do NOT escalate for:
+
+- A single-file or single-function lookup Codex can grep/read directly
+- Anything already answered in an existing research brief
+
 ### Codex → Claude
 
 Escalate to Claude when:
@@ -142,22 +179,33 @@ Claude may request Astra input when architecture depends on unresolved visual hi
 
 Astra may request Claude input when a visual concept needs complex interaction logic or responsive behavior.
 
+### Claude/Codex → Gemini
+
+Claude or Codex may request Gemini when a design or implementation decision depends on understanding a large amount of existing context first (whole codebase, long docs, large logs).
+
+### Gemini → Claude / Codex
+
+Gemini does not make architecture, visual, or implementation decisions. It hands its research brief back to Claude or Codex to act on.
+
 ---
 
 ## Default Workflow
 
 1. **Codex starts first** for normal development work.
 2. If the task is purely implementation, Codex completes it.
-3. If Codex encounters a visual invention/design decision, send only that part to Astra.
-4. Astra returns:
+3. If Codex needs large-context research before it can implement safely, send only that part to Gemini.
+4. Gemini returns a research brief.
+5. If Codex encounters a visual invention/design decision, send only that part to Astra.
+6. Astra returns:
    - visual direction
    - mockup/asset guidance
    - reusable design rules
-5. If the result requires complex interaction or frontend restructuring, Claude converts the design into an implementation plan.
-6. Codex implements.
-7. Codex tests and performs routine visual iteration.
-8. Astra is called again only for major visual review or when quality is clearly insufficient.
-9. Claude is called again only when architecture or interaction complexity demands it.
+7. If the result requires complex interaction or frontend restructuring, Claude converts the design (and any Gemini research brief) into an implementation plan.
+8. Codex implements.
+9. Codex tests and performs routine visual iteration.
+10. Astra is called again only for major visual review or when quality is clearly insufficient.
+11. Claude is called again only when architecture or interaction complexity demands it.
+12. Gemini is called again only when new large-context research is genuinely needed.
 
 ---
 
@@ -170,11 +218,14 @@ The orchestrator must minimize unnecessary expensive-agent calls.
 - Codex is the default worker.
 - Do not use Astra for routine coding.
 - Do not use Claude for trivial fixes.
-- Do not ask all three agents the same question unless there is a genuine disagreement or high-risk decision.
+- Do not use Gemini for a lookup Codex can grep/read itself.
+- Do not ask all four agents the same question unless there is a genuine disagreement or high-risk decision.
 - Reuse previously approved design rules before asking Astra again.
 - Reuse existing architecture decisions before asking Claude again.
+- Reuse existing research briefs before asking Gemini again.
 - Bundle related visual questions into one Astra request whenever possible.
 - Bundle related architectural questions into one Claude request whenever possible.
+- Bundle related research questions into one Gemini request whenever possible.
 - Prefer one high-quality Astra design pass over many small visual prompts.
 - Prefer implementation checklists over repeated agent conversations.
 
@@ -205,6 +256,10 @@ Record:
 Before escalating to Astra, Codex must check whether the required decision already exists in the design guide.
 
 If it already exists, Codex must implement it directly.
+
+After Gemini delivers a research brief, Codex or Claude must record the key findings (in `docs/RESEARCH_LOG.md` or the relevant decision log) so the same research is not re-run later.
+
+Before escalating to Gemini, Codex must check whether the needed information already exists in a prior research brief or decision log.
 
 ---
 
@@ -258,6 +313,12 @@ Codex should own:
 - Test automation
 - Runtime debugging
 - Performance tuning
+
+Gemini should own, when needed:
+
+- Surveying existing socket protocol / server TODOs / handoff docs before a large change
+- Analyzing hand-history or session logs for behavioral patterns or bugs
+- Comparing external poker-engine or socket-library approaches before Claude/Codex commits to one
 
 ---
 
@@ -323,6 +384,8 @@ Codex must verify:
 | Routine frontend coding | Codex |
 | Backend coding | Codex |
 | Tests / debugging | Codex |
+| Large-context research / analysis | Gemini |
+| Comparing external libraries/approaches | Gemini |
 | Major visual quality review | Astra |
 | Major frontend architecture review | Claude |
 | Repeated implementation iteration | Codex |
@@ -331,8 +394,9 @@ Codex must verify:
 
 ## Final Principle
 
-**Do not spend premium-agent credits on work that can be executed from an already-approved decision.**
+**Do not spend premium-agent credits on work that can be executed from an already-approved decision or existing research brief.**
 
-Astra decides how it should look.  
-Claude decides how complex frontend behavior should be structured.  
+Gemini researches the context so decisions are well-informed.
+Astra decides how it should look.
+Claude decides how complex frontend behavior should be structured.
 Codex builds it, tests it, and iterates on it.

@@ -1,21 +1,30 @@
 ---
 name: holdem-reference-design
-description: Use when designing, implementing, reviewing, or generating any poker, Texas Hold'em, tournament, lobby, table, player-seat, betting-control, modal, tutorial, or promotional interface in this repository where visual consistency with the bundled Prime Poker and mobile poker reference screenshots must be preserved.
+description: Use when designing, implementing, reviewing, or generating poker, Texas Hold'em, WSOP-style tournament, lobby, table, player-seat, betting-control, showdown, win, bounty, card-deal, chip-motion, sound, haptic, modal, tutorial, or promotional interfaces in this repository where visual and motion consistency with the bundled references must be preserved.
 ---
 
 # Preserve the Holdem Reference Design
 
 Treat the bundled screenshots as the visual source of truth. Read `references/design-system.md` completely before proposing or changing UI.
 
+For animation, game effects, sound, haptics, turn timing, showdown, bounty, reconnect, or designer-to-runtime integration, also read `references/effects-and-motion.md` completely. Treat authoritative server state as truth and presentation as a cancellable projection of that state.
+
 ## Required workflow
 
-1. Inventory every file in `assets/reference-screens/`; do not infer the system from a subset.
+1. Inventory every file in the skill-relative `assets/reference-screens/` directory; do not infer the system from a subset.
 2. Classify the requested screen as table, lobby, tournament detail, modal/sheet, tutorial, or promotional.
 3. Inspect at least one desktop and one mobile reference when the component exists in both forms. Inspect every directly relevant state.
 4. Extract the relevant layout, hierarchy, color, material, type, spacing, and interaction rules before implementation.
 5. Reuse existing project components and assets where suitable. Generate new raster art only when necessary; keep it original and stylistically compatible.
 6. Render the finished result at its target viewport. Compare it side by side with the closest bundled reference.
 7. Correct material, proportion, hierarchy, legibility, clipping, overlap, and state differences before reporting completion.
+
+## Designer and operator boundary
+
+- Accept original raster artwork and effect frames only from the Atlas/designer-agent pipeline. Do not invent substitute production art in implementation code.
+- Require the designer handoff manifest defined in `references/effects-and-motion.md`; reject assets without event, anchor, frame, safe-area, fallback, and performance metadata.
+- Let the game operator map accepted assets to authoritative game events. Never let animation completion decide cards, bets, pots, winners, bounties, clocks, or reconnect outcomes.
+- Pack frame sequences as texture/sprite atlases for production. Keep loose frames only as immutable source or review material.
 
 Time pressure never removes steps 1, 3, 6, or 7. If rendering or reference inspection is unavailable, report the limitation and do not claim visual fidelity.
 

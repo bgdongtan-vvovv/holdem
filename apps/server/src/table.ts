@@ -2,15 +2,14 @@
  * 단일 테이블 참조 구현 (형섭 시작점).
  *
  * 엔진(@holdem/poker-engine)을 감싸서:
- *  - 착석/이탈 관리
- *  - 2명 이상이면 핸드 시작
- *  - 액션 검증 후 다음 상태로 진행
+ *  - 착석/이탈 관리 (핸드 도중 이탈은 핸드 종료 후 정리)
+ *  - 2명 이상이면 핸드 시작, 핸드 종료 후 버튼 이동
+ *  - 액션 검증 후 다음 상태로 진행, 액션 타임뱅크 마감시각 제공
  *  - 뷰어별로 홀카드를 가린 PublicTableState 생성
  *
  * TODO(형섭):
- *  - 액션 타임뱅크(자동 폴드/체크) 타이머
- *  - 핸드 종료 후 다음 핸드 자동 시작 + 버튼 이동
- *  - 재접속/이탈 처리, 앉은 채로 대기(sit-out)
+ *  - 진짜 재접속(같은 유저로 복귀) — 인증(유저 id) 도입 후 가능
+ *  - 앉은 채로 대기(sit-out) — 핸드 강제 스킵을 유저가 직접 선택하는 기능
  *  - 사이드팟 표시(엔진 state.pots) 반영
  *  - 다중 테이블/로비, 영속화(DB), 레이크
  */
@@ -27,12 +26,16 @@ import {
 import type { PublicPlayer, PublicTableState } from "@holdem/shared";
 
 const SEAT_COUNT = 6;
+/** 액션 타임뱅크 길이 (ms). 마감 전 액션 없으면 자동 체크/폴드. */
+const TIMEBANK_MS = 20_000;
 
 interface Occupant {
   seat: number; // 테이블 좌석 0..5
   id: string;
   stack: number;
   socketId: string;
+  /** 핸드 도중 leave/disconnect 됨 — 핸드 종료 후 실제로 제거된다. */
+  leaving?: boolean;
 }
 
 export class Table {
@@ -45,6 +48,8 @@ export class Table {
   private buttonSeat = 0;
   /** 엔진 player 인덱스 → 테이블 좌석 */
   private engineToSeat: number[] = [];
+  /** 현재 액션 차례가 시작된 시각 (epoch ms). 타임뱅크 계산용. */
+  private actionStartedAt: number | null = null;
 
   constructor(id: string, smallBlind: number, bigBlind: number) {
     this.id = id;
@@ -58,9 +63,22 @@ export class Table {
     this.occupants.set(seat, { ...occ, seat });
   }
 
+  /**
+   * socketId 의 플레이어를 테이블에서 내보낸다.
+   * 진행 중인 핸드에 참여 중이면 즉시 제거하지 않고 표시만 해 둔다 —
+   * 엔진 상태(engineToSeat, 카드/팟)와 어긋나지 않도록 핸드 종료 후 settle() 에서 정리한다.
+   * 핸드 중이 아니면 바로 제거한다.
+   */
   leaveBySocket(socketId: string): void {
     for (const [seat, o] of this.occupants) {
-      if (o.socketId === socketId) this.occupants.delete(seat);
+      if (o.socketId !== socketId) continue;
+      const inActiveHand =
+        this.hand !== null && !isHandOver(this.hand) && this.engineToSeat.includes(seat);
+      if (inActiveHand) {
+        o.leaving = true;
+      } else {
+        this.occupants.delete(seat);
+      }
     }
   }
 
@@ -82,6 +100,7 @@ export class Table {
       smallBlind: this.smallBlind,
       bigBlind: this.bigBlind,
     });
+    this.actionStartedAt = this.hand.actingIndex >= 0 ? Date.now() : null;
     return true;
   }
 
@@ -92,9 +111,36 @@ export class Table {
     if (!occ) throw new Error("착석하지 않음");
     const engineIdx = this.engineToSeat.indexOf(occ.seat);
     if (this.hand.actingIndex !== engineIdx) throw new Error("당신 차례가 아닙니다");
+    this.applyEngineAction(action);
+  }
+
+  /**
+   * 타임뱅크 마감 시 현재 차례 플레이어 대신 기본 액션(체크 가능하면 체크, 아니면 폴드)을 적용한다.
+   * 접속이 끊긴 플레이어도 occupant 조회 없이 처리되므로 재접속/이탈 상황에서도 핸드가 막히지 않는다.
+   */
+  autoActTimedOutPlayer(): boolean {
+    if (!this.hand || isHandOver(this.hand) || this.hand.actingIndex < 0) return false;
+    const la = legalActions(this.hand);
+    if (!la) return false;
+    this.applyEngineAction(la.canCheck ? { type: "check" } : { type: "fold" });
+    return true;
+  }
+
+  private applyEngineAction(action: Action): void {
+    if (!this.hand) return;
     this.hand = applyAction(this.hand, action);
-    // TODO(형섭): 핸드 종료면 스택 반영 후 buttonSeat 이동 & maybeStartHand 예약
-    if (isHandOver(this.hand)) this.settle();
+    if (isHandOver(this.hand)) {
+      this.settle();
+    } else {
+      this.actionStartedAt = this.hand.actingIndex >= 0 ? Date.now() : null;
+    }
+  }
+
+  /** 현재 액션 차례의 타임뱅크 마감 시각(epoch ms). 없으면 null. */
+  actionDeadline(): number | null {
+    if (!this.hand || isHandOver(this.hand) || this.hand.actingIndex < 0) return null;
+    if (this.actionStartedAt === null) return null;
+    return this.actionStartedAt + TIMEBANK_MS;
   }
 
   private settle(): void {
@@ -106,6 +152,11 @@ export class Table {
       if (occ) occ.stack = p.stack;
     });
     this.buttonSeat = (this.buttonSeat + 1) % SEAT_COUNT;
+    this.actionStartedAt = null;
+    // 핸드 도중 leave/disconnect 된 플레이어를 이제 실제로 내보낸다.
+    for (const [seat, occ] of [...this.occupants]) {
+      if (occ.leaving) this.occupants.delete(seat);
+    }
   }
 
   resolveShowdown(): boolean {
@@ -158,7 +209,7 @@ export class Table {
             canRaise: la.canRaise,
             minRaiseTo: la.minRaiseTo,
             maxRaiseTo: la.maxRaiseTo,
-            // TODO(형섭): deadline 은 타임뱅크 타이머 도입 시 채우기
+            deadline: this.actionDeadline() ?? undefined,
           };
         }
       }

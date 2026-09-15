@@ -18,3 +18,4 @@ Main agent policy:
 - Astra = visual creation / visual review
 - Claude = complex frontend architecture / interaction
 - Codex = implementation / testing / debugging / iteration
+- Gemini = research / large-context analysis (feeds briefs to Claude or Codex)
