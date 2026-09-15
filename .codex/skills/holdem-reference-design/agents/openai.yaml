@@ -1,0 +1,4 @@
+interface:
+  display_name: "Holdem Reference Design"
+  short_description: "Preserve the project poker visual language"
+  default_prompt: "Use $holdem-reference-design to design or review this poker interface against the bundled references."
