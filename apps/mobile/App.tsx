@@ -5,12 +5,15 @@ import { LobbyScreen } from "./src/screens/LobbyScreen";
 import { GameScreen } from "./src/screens/GameScreen";
 import { initSfx, unlockSfx } from "./src/sound/sfx";
 import { playMusic, stopMusic } from "./src/sound/music";
+import { useScreenOrientation } from "./src/hooks/useScreenOrientation";
 
 type Screen = "login" | "lobby" | "game";
 
 export default function App() {
   const [screen, setScreen] = useState<Screen>("login");
   const [playerAvatarIndex, setPlayerAvatarIndex] = useState(0);
+
+  useScreenOrientation(screen);
 
   useEffect(() => {
     void initSfx();
@@ -108,6 +111,8 @@ async function enterMobileWebFullscreen(): Promise<void> {
     const orientation = globalThis.screen?.orientation as {
       lock?: (orientation: "portrait" | "portrait-primary") => Promise<void>;
     } | undefined;
+    // 모바일 웹에서도 per-screen 정책이 적용되도록, 전체화면 진입 시 한 번만 잠근다.
+    // 네이티브 앱은 useScreenOrientation 훅이 화면 단위로 관리한다.
     await orientation?.lock?.("portrait").catch(() => undefined);
   } catch {
     // 모바일 브라우저/인앱 브라우저가 전체화면 API를 막는 경우는 조용히 기본 화면으로 진행합니다.
