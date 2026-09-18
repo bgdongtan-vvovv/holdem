@@ -188,6 +188,12 @@ export function useRemoteTable(options: RemoteTableOptions) {
     socket.on("disconnect", () => setConnected(false));
     socket.on(EVENTS.state, (s: PublicTableState) => setPub(s));
     socket.on(EVENTS.error, (e: { code: string; message: string }) => {
+      // 자동 착석 재시도가 이전 시도의 서버 응답을 받기 전에 다음 좌석으로 재시도할 때,
+      // "이미 착석한 좌석" SIT_FAILED 는 실패가 아니라 이전 시도가 이미 성공했다는 뜻이다.
+      // 이 경우를 진짜 에러로 취급하면 mySeatRef 가 잘못 초기화되어 재시도 루프가
+      // 끝나지 않고 배너가 영구히 표시된다.
+      const alreadySeated = e.code === "SIT_FAILED" && e.message.includes("이미 착석");
+      if (alreadySeated) return;
       setError(`${e.code}: ${e.message}`);
       if (e.code === "SIT_FAILED") mySeatRef.current = -1;
     });
