@@ -23,7 +23,7 @@ import {
   type Action,
   type HandState,
 } from "@holdem/poker-engine";
-import type { PublicPlayer, PublicTableState } from "@holdem/shared";
+import type { PublicPlayer, PublicTableState, TableSummary } from "@holdem/shared";
 
 const SEAT_COUNT = 6;
 /** 액션 타임뱅크 길이 (ms). 마감 전 액션 없으면 자동 체크/폴드. */
@@ -252,5 +252,24 @@ export class Table {
 
   isAwaitingShowdown(): boolean {
     return this.hand?.street === "showdown";
+  }
+
+  occupantCount(): number {
+    return this.occupants.size;
+  }
+
+  isFull(): boolean {
+    return this.occupants.size >= SEAT_COUNT;
+  }
+
+  /** 로비 목록에 노출되는 요약 정보. */
+  summary(): TableSummary {
+    return {
+      tableId: this.id,
+      stakes: { smallBlind: this.smallBlind, bigBlind: this.bigBlind },
+      seatCount: SEAT_COUNT,
+      occupiedSeats: this.occupants.size,
+      status: this.isActive() ? "active" : "waiting",
+    };
   }
 }
