@@ -27,17 +27,24 @@ import { SHOWDOWN_FIRE_FRAMES } from "../effects/showdownFrames";
 import { TableSurface } from "./TableSurface";
 import { SideChromeButton, DealerBadge } from "./GameChrome";
 
-const BOARD_REVEAL_DELAY_MS = 500;
-const POT_CENTER_X = 0.5;
-const POT_CENTER_Y = 0.43;
-const TABLE_LIGHT_WIDTH_RATIO = 0.76;
-const TABLE_LIGHT_HEIGHT_RATIO = 0.48;
-const TABLE_LIGHT_TRANSLATE_Y = -16;
+// 참고 디자인 공간 (세로 기준). 컨테이너 가로/세로 비율(ratio = w/h)로
+// 포트레이트 / 랜드스케이프를 구분해 각기 다른 레이아웃 파라미터를 쓴다.
+const DESIGN_W = 430;
+const DESIGN_H = 690;
+const RATIO_THRESHOLD = 0.95; // ratio >= 이 값이면 랜드스케이프
+
+// 세로(포트레이트) 설계 기준 상수 (원본 유지)
 const POT_PILL_MIN_WIDTH = 270;
 const POT_PILL_MIN_HEIGHT = 82;
 const POT_PILL_MARGIN_TOP = 8;
 const POT_PILL_PADDING_TOP = 7;
 const POT_PILL_PADDING_BOTTOM = 8;
+const TABLE_LIGHT_WIDTH_RATIO = 0.76;
+const TABLE_LIGHT_HEIGHT_RATIO = 0.48;
+const TABLE_LIGHT_TRANSLATE_Y = -16;
+const BOARD_REVEAL_DELAY_MS = 500;
+const POT_CENTER_X = 0.5;
+const POT_CENTER_Y = 0.43;
 
 type TableVisualLayout = {
   scale: number;
@@ -744,30 +751,76 @@ function positionFor<T>(sixSeatPositions: readonly T[], nineSeatPositions: reado
 }
 
 function makeTableLayout(tableSize: { width: number; height: number }): TableVisualLayout {
-  const widthScale = tableSize.width > 0 ? tableSize.width / 430 : 1;
-  const heightScale = tableSize.height > 0 ? tableSize.height / 690 : 1;
-  const scale = Math.max(0.72, Math.min(1, widthScale, heightScale));
+  const w = tableSize.width;
+  const h = tableSize.height;
+  const ratio = w > 0 && h > 0 ? w / h : 1;
+
+  // 방향 판별: ratio >= 임계값이면 랜드스케이프. 임계값은 1보다 약간 작게 잡아
+  // 정사각형에 가까운 케이스(예: 430×460)도 포트레이트로 처리한다.
+  const isLandscape = ratio >= RATIO_THRESHOLD && w > h;
+  const tighter = isLandscape; // 랜드스케이프는 가용 가로가 넓어도 세로가 짧음
+
+  // 기준 차원 선택: 포트레이트는 높이.constraint, 랜드스케이프는 너비.constraint
+  const primary = tighter ? w : h;
+  const secondary = tighter ? h : w;
+  const primaryDesign = tighter ? DESIGN_W : DESIGN_H;
+  const secondaryDesign = tighter ? DESIGN_H : DESIGN_W;
+
+  const primaryScale = primary > 0 ? primary / primaryDesign : 1;
+  const secondaryScale = secondary > 0 ? secondary / secondaryDesign : 1;
+  // 스케일: 기본은 primary 기준. 세로가 너무 짧아 내용물이 깨질 때만 secondary로 제한.
+  let scale = Math.max(0.62, primaryScale);
+  const wouldOverflowSecondary = primaryScale * secondaryDesign > secondary && secondary > 0;
+  if (wouldOverflowSecondary) {
+    scale = Math.min(scale, secondary / secondaryDesign);
+  }
+  scale = Math.min(1, scale);
   const compact = scale < 0.92;
+
+  // ── 테이블 조명(라이트) 영역 비율 ──────────────────────────────
+  // 포트레이트: 기본 0.76 × 0.48 (높이 방향 여유 확보)
+  // 랜드스케이프: 가로로 더 넓고 세로로 더 짧은 광학 중심 영역
+  const tlWidthRatio = isLandscape
+    ? compact ? 0.88 : 0.92
+    : compact ? 0.7 : TABLE_LIGHT_WIDTH_RATIO;
+  const tlHeightRatio = isLandscape
+    ? compact ? 0.34 : 0.39
+    : compact ? 0.41 : TABLE_LIGHT_HEIGHT_RATIO;
+  const tlTranslateY = isLandscape
+    ? compact ? -22 : -10
+    : compact ? -30 : TABLE_LIGHT_TRANSLATE_Y;
+
+  // ── 팟 필(pill) 크기 ───────────────────────────────────────────
+  const basePillW = isLandscape
+    ? compact ? 250 : 320
+    : compact ? 230 : POT_PILL_MIN_WIDTH;
+  const basePillH = isLandscape
+    ? compact ? 62 : 74
+    : compact ? 70 : POT_PILL_MIN_HEIGHT;
 
   return {
     scale,
     compact,
     seatScale: compact ? Math.max(0.72, scale * 0.95) : 1,
     potChipSize: compact ? Math.round(22 * scale) : 25,
-    potPillWidth: compact ? Math.round(230 * scale) : POT_PILL_MIN_WIDTH,
-    potPillHeight: compact ? Math.round(70 * scale) : POT_PILL_MIN_HEIGHT,
+    potPillWidth: Math.round(basePillW * (compact ? scale : 1)),
+    potPillHeight: Math.round(basePillH * (compact ? scale : 1)),
     potPillPaddingTop: compact ? 5 : POT_PILL_PADDING_TOP,
     potPillPaddingBottom: compact ? 6 : POT_PILL_PADDING_BOTTOM,
     potPillMarginTop: compact ? 4 : POT_PILL_MARGIN_TOP,
-    tableLightWidthRatio: compact ? 0.7 : TABLE_LIGHT_WIDTH_RATIO,
-    tableLightHeightRatio: compact ? 0.41 : TABLE_LIGHT_HEIGHT_RATIO,
-    tableLightTranslateY: compact ? -30 : TABLE_LIGHT_TRANSLATE_Y,
+    tableLightWidthRatio: tlWidthRatio,
+    tableLightHeightRatio: tlHeightRatio,
+    tableLightTranslateY: tlTranslateY,
     boardSpacing: compact ? 48 : 66,
     boardWidth: compact ? 244 : 330,
     boardHeight: compact ? 74 : 100,
-    boardTopRatio: compact ? 0.57 : 0.58,
+    boardTopRatio: isLandscape
+      ? compact ? 0.51 : 0.54
+      : compact ? 0.57 : 0.58,
     boardOffsetX: 0,
-    boardOffsetY: compact ? 58 : 82,
+    boardOffsetY: isLandscape
+      ? compact ? 36 : 52
+      : compact ? 58 : 82,
     boardCardSize: compact ? "md" : "lg",
   };
 }

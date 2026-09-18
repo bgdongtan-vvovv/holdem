@@ -60,6 +60,15 @@ export interface PublicHandResult {
   shownHands?: { seat: number; category: string; cards: Card[] }[];
 }
 
+/** 로비 목록에 표시되는 테이블 요약 정보. */
+export interface TableSummary {
+  tableId: string;
+  stakes: { smallBlind: number; bigBlind: number };
+  seatCount: number;
+  occupiedSeats: number;
+  status: "waiting" | "active";
+}
+
 // ─────────────────────────────────────────────────────────────────────────
 // 소켓 이벤트 (Socket.IO 채널명 + 페이로드)
 // ─────────────────────────────────────────────────────────────────────────
@@ -71,6 +80,12 @@ export interface ClientToServer {
   leave: () => void;
   action: (p: { action: Action }) => void; // 폴드/체크/콜/베팅
   chat: (p: { text: string }) => void;
+  /** 로비: 현재 테이블 목록 요청. */
+  listTables: () => void;
+  /** 로비: 새 테이블 생성 후 자동 입장. */
+  createTable: (p: { smallBlind: number; bigBlind: number }) => void;
+  /** 로비: 조건에 맞는(빈자리 있는) 테이블에 매치메이킹 입장, 없으면 새로 생성. */
+  quickJoin: (p: { smallBlind?: number; bigBlind?: number }) => void;
 }
 
 /** 서버 → 클라이언트 */
@@ -79,6 +94,10 @@ export interface ServerToClient {
   handResult: (r: PublicHandResult) => void;
   error: (e: { code: string; message: string }) => void;
   chat: (m: { seat: number; id: string; text: string; ts: number }) => void;
+  /** 로비 테이블 목록 (listTables 응답 + 목록 변경 시 브로드캐스트). */
+  tables: (list: TableSummary[]) => void;
+  /** join/createTable/quickJoin 성공 시 실제 입장한 테이블 id 확인. */
+  joined: (p: { tableId: string }) => void;
 }
 
 /** 채널명 상수 (오타 방지). */
@@ -91,4 +110,9 @@ export const EVENTS = {
   state: "state",
   handResult: "handResult",
   error: "error",
+  listTables: "listTables",
+  createTable: "createTable",
+  quickJoin: "quickJoin",
+  tables: "tables",
+  joined: "joined",
 } as const;
