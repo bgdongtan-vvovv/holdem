@@ -28,6 +28,8 @@ import type { PublicPlayer, PublicTableState, TableSummary } from "@holdem/share
 const SEAT_COUNT = 6;
 /** 액션 타임뱅크 길이 (ms). 마감 전 액션 없으면 자동 체크/폴드. */
 const TIMEBANK_MS = 20_000;
+/** 봇 occupant 의 socketId 접두사 — 진짜 소켓과 구분하기 위한 마커일 뿐, 인증과 무관. */
+export const BOT_SOCKET_PREFIX = "bot:";
 
 interface Occupant {
   seat: number; // 테이블 좌석 0..5
@@ -260,6 +262,42 @@ export class Table {
 
   isFull(): boolean {
     return this.occupants.size >= SEAT_COUNT;
+  }
+
+  /** 현재 액션 차례 좌석 (없으면 -1). */
+  actingSeat(): number {
+    if (!this.hand || isHandOver(this.hand) || this.hand.actingIndex < 0) return -1;
+    return this.engineToSeat[this.hand.actingIndex]!;
+  }
+
+  isBotSeat(seat: number): boolean {
+    return this.occupants.get(seat)?.socketId.startsWith(BOT_SOCKET_PREFIX) ?? false;
+  }
+
+  /** 지금 액션 차례가 봇인지. 테스트용 자동 참가자 스케줄링에 사용. */
+  actingIsBot(): boolean {
+    const seat = this.actingSeat();
+    return seat >= 0 && this.isBotSeat(seat);
+  }
+
+  /** 봇 의사결정을 위해 현재 합법 액션(엔진 형태)을 노출한다. */
+  currentLegalActions() {
+    if (!this.hand || isHandOver(this.hand)) return null;
+    return legalActions(this.hand);
+  }
+
+  /** 봇을 대신해 액션을 적용한다 — 소켓/좌석 소유권 검증 없이 곧바로 진행. */
+  botAct(action: Action): void {
+    if (!this.hand || isHandOver(this.hand)) throw new Error("진행 중인 핸드 없음");
+    this.applyEngineAction(action);
+  }
+
+  /** 빈 좌석 중 가장 낮은 번호. 없으면 null. */
+  firstOpenSeat(): number | null {
+    for (let seat = 0; seat < SEAT_COUNT; seat++) {
+      if (!this.occupants.has(seat)) return seat;
+    }
+    return null;
   }
 
   /** 로비 목록에 노출되는 요약 정보. */

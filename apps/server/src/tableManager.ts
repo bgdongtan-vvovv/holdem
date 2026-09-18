@@ -16,12 +16,17 @@
 import type { Server, Socket } from "socket.io";
 import type { Action } from "@holdem/poker-engine";
 import { EVENTS, type TableSummary } from "@holdem/shared";
-import { Table } from "./table.js";
+import { BOT_SOCKET_PREFIX, Table } from "./table.js";
 
 const SHOWDOWN_DELAY_MS = 5000;
 const NEXT_HAND_DELAY_MS = 3000;
 const DEFAULT_SMALL_BLIND = 10;
 const DEFAULT_BIG_BLIND = 20;
+/** 사람이 혼자 접속해도 바로 테스트할 수 있도록 채워 넣을 최소 인원. */
+const MIN_OCCUPANTS_FOR_TESTING = 2;
+const BOT_ACT_DELAY_MIN_MS = 600;
+const BOT_ACT_DELAY_MAX_MS = 1400;
+const BOT_NAMES = ["봇영수", "봇하나", "봇두리", "봇세찌", "봇네모"];
 
 interface ManagedTable {
   table: Table;
@@ -35,6 +40,7 @@ export class TableManager {
   /** socketId -> 현재 입장해 있는 tableId. */
   private readonly socketTable = new Map<string, string>();
   private tableSeq = 1;
+  private botSeq = 1;
 
   constructor(io: Server) {
     this.io = io;
@@ -114,9 +120,28 @@ export class TableManager {
     const managed = this.requireManaged(socket);
     // TODO(형섭): buyIn 을 유저 지갑에서 검증/차감
     managed.table.sit(seat, { seat, id: shortId(socket.id), stack: buyIn, socketId: socket.id });
-    if (managed.table.maybeStartHand()) this.armActionTimer(managed);
+    this.fillWithBotsForTesting(managed, buyIn);
+    // 이미 핸드가 진행 중이면 여기서 다시 arm 하지 않는다 — 현재 액션 차례의
+    // 타임뱅크를 다른 사람이 앉았다는 이유로 리셋해버리면 안 되기 때문.
+    const startedFreshHand = managed.table.maybeStartHand();
     this.broadcastTableState(managed.table.id);
     this.broadcastLobby();
+    if (startedFreshHand) this.handleHandProgress(managed);
+  }
+
+  /**
+   * 사람이 혼자 앉아도 바로 핸드를 테스트할 수 있도록, 최소 인원이 될 때까지
+   * 봇 occupant 를 빈 좌석에 채운다. 실제 토너먼트/매치메이킹 밸런싱과는 무관한
+   * 개발/테스트 편의 기능이다.
+   */
+  private fillWithBotsForTesting(managed: ManagedTable, buyIn: number): void {
+    while (managed.table.occupantCount() < MIN_OCCUPANTS_FOR_TESTING) {
+      const seat = managed.table.firstOpenSeat();
+      if (seat === null) break;
+      const name = BOT_NAMES[(this.botSeq - 1) % BOT_NAMES.length]!;
+      const socketId = `${BOT_SOCKET_PREFIX}${this.botSeq++}`;
+      managed.table.sit(seat, { seat, id: name, stack: buyIn, socketId });
+    }
   }
 
   act(socket: Socket, action: Action): void {
@@ -172,7 +197,7 @@ export class TableManager {
     managed.nextHandTimer = setTimeout(() => {
       managed.nextHandTimer = null;
       if (managed.table.maybeStartHand()) this.broadcastTableState(managed.table.id);
-      this.armActionTimer(managed);
+      this.handleHandProgress(managed);
     }, NEXT_HAND_DELAY_MS);
   }
 
@@ -208,7 +233,37 @@ export class TableManager {
       this.scheduleNextHand(managed);
     } else {
       this.armActionTimer(managed);
+      this.maybeActBot(managed);
     }
+  }
+
+  // ── 테스트용 봇 자동 액션 ────────────────────────────────────────────────
+
+  /**
+   * 지금 액션 차례가 봇이면 잠시 뒤 대신 액션한다. 매 호출마다 실행 시점의
+   * 실제 상태(actingIsBot/currentLegalActions)를 다시 읽으므로, 여러 경로에서
+   * 중복 호출돼도 안전하다 — 그 사이 사람이 먼저 액션했으면 조용히 아무것도 안 한다.
+   */
+  private maybeActBot(managed: ManagedTable): void {
+    if (!managed.table.actingIsBot()) return;
+    const delay = BOT_ACT_DELAY_MIN_MS + Math.random() * (BOT_ACT_DELAY_MAX_MS - BOT_ACT_DELAY_MIN_MS);
+    setTimeout(() => {
+      if (!managed.table.actingIsBot()) return;
+      const action = this.decideBotAction(managed.table);
+      if (!action) return;
+      managed.table.botAct(action);
+      this.broadcastTableState(managed.table.id);
+      this.handleHandProgress(managed);
+    }, delay);
+  }
+
+  /** 아주 단순한 봇 정책: 체크 가능하면 체크, 아니면 콜. 레이즈/폴드는 하지 않아 핸드가 항상 끝까지 진행된다. */
+  private decideBotAction(table: Table): Action | null {
+    const la = table.currentLegalActions();
+    if (!la) return null;
+    if (la.canCheck) return { type: "check" };
+    if (la.canCall) return { type: "call" };
+    return { type: "fold" };
   }
 }
 
