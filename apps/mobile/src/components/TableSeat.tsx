@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState } from "react";
-import { Animated, Easing, StyleSheet, Text, View } from "react-native";
+import { Animated, Easing, PanResponder, StyleSheet, Text, View } from "react-native";
 import type { PlayerState } from "@holdem/poker-engine";
 import type { Card } from "@holdem/poker-engine";
 import { theme } from "../theme";
@@ -9,6 +9,9 @@ import { PlayingCard } from "./PlayingCard";
 import { AnimatedAppear } from "./AnimatedAppear";
 import { formatGameMoney } from "../formatMoney";
 import { playSfx } from "../sound/sfx";
+
+/** 서버 타임뱅크(apps/server/src/table.ts TIMEBANK_MS)와 맞춘 시각적 카운트다운 길이. */
+const TURN_TIMER_MS = 20_000;
 
 export function TableSeat({
   player,
@@ -23,6 +26,8 @@ export function TableSeat({
   avatarIndex,
   countryFlag,
   rank,
+  cardsOpened,
+  onOpenCards,
 }: {
   player: PlayerState;
   isHuman: boolean;
@@ -36,12 +41,32 @@ export function TableSeat({
   avatarIndex?: number;
   countryFlag?: string;
   rank?: number;
+  /** 사람 좌석 전용: 내 홀카드를 아직 직접 열어보지 않았으면 false. */
+  cardsOpened?: boolean;
+  onOpenCards?: () => void;
 }) {
   const folded = player.status === "folded";
   const out = player.status === "out";
   const showCards = isHuman || revealCards;
   const hasCards = player.holeCards.length > 0 && !folded && !out;
+  const needsOpen = isHuman && hasCards && cardsOpened === false;
   const avatarSize = isHuman ? 88 : 72;
+  const timerProgress = useRef(new Animated.Value(1)).current;
+
+  useEffect(() => {
+    timerProgress.stopAnimation();
+    if (!isActive) {
+      timerProgress.setValue(1);
+      return;
+    }
+    timerProgress.setValue(1);
+    Animated.timing(timerProgress, {
+      toValue: 0,
+      duration: TURN_TIMER_MS,
+      easing: Easing.linear,
+      useNativeDriver: false,
+    }).start();
+  }, [isActive, timerProgress]);
   const cardsOnLeft =
     playerCount > 6
       ? dealIndex === 5 || dealIndex === 6 || dealIndex === 7 || dealIndex === 8
@@ -83,6 +108,9 @@ export function TableSeat({
               />
             </DealtCard>
           ))}
+          {isHuman && cardsOpened !== undefined && (
+            <CardPeekOverlay visible={needsOpen} onOpened={onOpenCards} />
+          )}
         </View>
       )}
 
@@ -98,7 +126,12 @@ export function TableSeat({
         <Text style={styles.stack}>{out ? "OUT" : formatGameMoney(player.stack)}</Text>
         {isActive && (
           <View style={styles.timerTrack}>
-            <View style={styles.timerFill} />
+            <Animated.View
+              style={[
+                styles.timerFill,
+                { width: timerProgress.interpolate({ inputRange: [0, 1], outputRange: ["0%", "100%"] }) },
+              ]}
+            />
           </View>
         )}
       </LinearGradient>
@@ -197,6 +230,77 @@ function WinnerGlow() {
         <View style={[styles.avatarSpark, styles.avatarSparkLeft]} />
       </Animated.View>
     </AnimatedAppear>
+  );
+}
+
+const PEEK_DRAG_RANGE = 64; // 이 거리(px)만큼 드래그하면 완전히 열림
+const PEEK_OPEN_THRESHOLD = 0.55; // 손을 뗐을 때 이 비율 이상이면 열림 확정
+
+/**
+ * 내 홀카드 위에 겹쳐지는 뒷면 카드. 손가락으로 끌면(방향 무관, 거리 기준)
+ * 서서히 젖혀지며 아래의 실제 카드가 드러난다. 임계값 전에 손을 떼면 다시 덮인다.
+ */
+function CardPeekOverlay({ visible, onOpened }: { visible: boolean; onOpened?: () => void }) {
+  const progress = useRef(new Animated.Value(0)).current;
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onMoveShouldSetPanResponderCapture: (_, g) => Math.abs(g.dx) > 2 || Math.abs(g.dy) > 2,
+      onPanResponderMove: (_, g) => {
+        const dist = Math.max(Math.abs(g.dx), Math.abs(g.dy));
+        progress.setValue(Math.min(1, dist / PEEK_DRAG_RANGE));
+      },
+      onPanResponderRelease: (_, g) => {
+        const dist = Math.max(Math.abs(g.dx), Math.abs(g.dy));
+        const ratio = Math.min(1, dist / PEEK_DRAG_RANGE);
+        if (ratio >= PEEK_OPEN_THRESHOLD) {
+          playSfx("card_flip");
+          Animated.timing(progress, {
+            toValue: 1,
+            duration: 140,
+            easing: Easing.out(Easing.cubic),
+            useNativeDriver: true,
+          }).start(({ finished }) => {
+            if (finished) onOpened?.();
+          });
+        } else {
+          Animated.spring(progress, { toValue: 0, useNativeDriver: true, friction: 6 }).start();
+        }
+      },
+      onPanResponderTerminate: () => {
+        Animated.spring(progress, { toValue: 0, useNativeDriver: true, friction: 6 }).start();
+      },
+    }),
+  ).current;
+
+  if (!visible) return null;
+
+  return (
+    <Animated.View
+      {...panResponder.panHandlers}
+      style={[
+        styles.peekOverlay,
+        {
+          opacity: progress.interpolate({ inputRange: [0, 1], outputRange: [1, 0] }),
+          transform: [
+            { translateY: progress.interpolate({ inputRange: [0, 1], outputRange: [0, -36] }) },
+            { rotate: progress.interpolate({ inputRange: [0, 1], outputRange: ["0deg", "-12deg"] }) },
+            { scale: progress.interpolate({ inputRange: [0, 1], outputRange: [1, 0.9] }) },
+          ],
+        },
+      ]}
+    >
+      <View style={styles.peekCards}>
+        <PlayingCard hidden size="md" />
+        <View style={{ marginLeft: -3 }}>
+          <PlayingCard hidden size="md" />
+        </View>
+      </View>
+      <View style={styles.peekHint}>
+        <Text style={styles.peekHintText}>밀어서 확인</Text>
+      </View>
+    </Animated.View>
   );
 }
 
@@ -370,5 +474,21 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.15)",
     overflow: "hidden",
   },
-  timerFill: { width: "70%", height: "100%", backgroundColor: theme.success },
+  timerFill: { height: "100%", backgroundColor: theme.success },
+  peekOverlay: {
+    position: "absolute",
+    left: 0,
+    top: 0,
+    alignItems: "center",
+    zIndex: 13,
+  },
+  peekCards: { flexDirection: "row" },
+  peekHint: {
+    marginTop: 2,
+    backgroundColor: "rgba(0,0,0,0.55)",
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 2,
+  },
+  peekHintText: { color: theme.gold, fontWeight: "800", fontSize: 10 },
 });

@@ -166,6 +166,8 @@ export function PokerTable({
   reveal,
   showdownEffectActive,
   playerAvatarIndex,
+  humanCardsOpened,
+  onOpenHumanCards,
 }: {
   state: HandState;
   seatsMeta: (SeatMeta & { countryFlag?: string; rank?: number })[];
@@ -174,6 +176,8 @@ export function PokerTable({
   reveal: boolean;
   showdownEffectActive?: boolean;
   playerAvatarIndex: number;
+  humanCardsOpened?: boolean;
+  onOpenHumanCards?: () => void;
 }) {
   const [tableSize, setTableSize] = useState({ width: 0, height: 0 });
   const layout = React.useMemo(() => makeTableLayout(tableSize), [tableSize]);
@@ -384,6 +388,8 @@ export function PokerTable({
                 avatarIndex={isHuman ? playerAvatarIndex : undefined}
                 countryFlag={seatsMeta[p.seat]?.countryFlag ?? (seatsMeta[p.seat]?.isBot ? DEMO_BOT_FLAGS[p.seat % DEMO_BOT_FLAGS.length] : undefined)}
                 rank={seatsMeta[p.seat]?.rank}
+                cardsOpened={isHuman ? humanCardsOpened : undefined}
+                onOpenCards={isHuman ? onOpenHumanCards : undefined}
               />
             </View>
           </React.Fragment>

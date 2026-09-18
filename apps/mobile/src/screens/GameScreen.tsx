@@ -160,7 +160,21 @@ function TableView({
   const [showdownCardsReady, setShowdownCardsReady] = React.useState(false);
   const [showdownEffectActive, setShowdownEffectActive] = React.useState(false);
   const [showdownEffectKey, setShowdownEffectKey] = React.useState(0);
+  const [humanCardsOpened, setHumanCardsOpened] = React.useState(false);
   const audioUnlocked = React.useRef(false);
+
+  // 매 핸드 새로 받은 홀카드는 다시 "닫힌" 상태로 시작 — 탭해서 직접 열어야 보인다.
+  const humanHoleKey = state.players[humanSeat]?.holeCards.map((c) => `${c.rank}${c.suit}`).join("") ?? "";
+  const lastHumanHoleKey = React.useRef(humanHoleKey);
+  if (lastHumanHoleKey.current !== humanHoleKey) {
+    lastHumanHoleKey.current = humanHoleKey;
+    if (humanCardsOpened) setHumanCardsOpened(false);
+  }
+  const openHumanCards = React.useCallback(() => {
+    setHumanCardsOpened(true);
+    void unlockSfx("ui_click");
+    playSfx("card_flip");
+  }, []);
 
   const unlockAudioOnce = React.useCallback(() => {
     if (audioUnlocked.current) return;
@@ -244,6 +258,8 @@ function TableView({
           reveal={wentToShowdown && showdownCardsReady}
           showdownEffectActive={false}
           playerAvatarIndex={playerAvatarIndex}
+          humanCardsOpened={humanCardsOpened}
+          onOpenHumanCards={openHumanCards}
         />
 
         {showdownEffectActive && <ShowdownBurst key={showdownEffectKey} />}
