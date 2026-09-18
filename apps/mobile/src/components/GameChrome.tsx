@@ -1,4 +1,5 @@
 import React from "react";
+import { LinearGradient } from "expo-linear-gradient";
 import { Pressable, StyleSheet, Text, View } from "react-native";
 import { brandTokens } from "../brand/tokens";
 import { koCopy } from "../brand/copy.ko";
@@ -111,9 +112,9 @@ export function SideChromeButton({
  */
 export function DealerBadge() {
   return (
-    <View style={styles.dealerBadge}>
+    <LinearGradient colors={["#fff3ae", "#e3ba50", "#a66b1d"]} style={styles.dealerBadge}>
       <Text style={styles.dealerBadgeText}>D</Text>
-    </View>
+    </LinearGradient>
   );
 }
 
@@ -128,7 +129,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
     paddingHorizontal: 12,
-    backgroundColor: "rgba(10, 10, 10, 0.75)",
+    backgroundColor: "rgba(24, 15, 10, 0.85)",
     borderBottomWidth: 1,
     borderBottomColor: brandTokens.depth.panelBorder,
     zIndex: 20,
@@ -203,11 +204,12 @@ const styles = StyleSheet.create({
     width: 26,
     height: 26,
     borderRadius: 13,
-    backgroundColor: "#f5f5f0",
+    backgroundColor: "#ddb253",
+    shadowColor: "#000", shadowOpacity: 0.75, shadowRadius: 4, shadowOffset: { width: 0, height: 3 },
     alignItems: "center",
     justifyContent: "center",
     borderWidth: 2,
-    borderColor: "#c9962b",
+    borderColor: "#f8df85",
   },
-  dealerBadgeText: { color: "#1a1a1a", fontWeight: "900", fontSize: 13 },
+  dealerBadgeText: { color: "#67400e", fontWeight: "900", fontSize: 15 },
 });

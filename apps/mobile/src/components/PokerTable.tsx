@@ -29,6 +29,8 @@ import { SideChromeButton, DealerBadge } from "./GameChrome";
 
 // 참고 디자인 공간 (세로 기준). 컨테이너 가로/세로 비율(ratio = w/h)로
 // 포트레이트 / 랜드스케이프를 구분해 각기 다른 레이아웃 파라미터를 쓴다.
+// Decorative countries belong only to the local demo bots; remote players need metadata.
+const DEMO_BOT_FLAGS = ["🇰🇷", "🇯🇵", "🇨🇦", "🇬🇧", "🇧🇷", "🇫🇷", "🇩🇪", "🇹🇭", "🇦🇺"] as const;
 const DESIGN_W = 430;
 const DESIGN_H = 690;
 const RATIO_THRESHOLD = 0.95; // ratio >= 이 값이면 랜드스케이프
@@ -76,21 +78,21 @@ const SEAT_POS_6: readonly AnchorPos[] = [
   { left: "50%", top: "80%" }, // 0 hero
   { left: "15%", top: "69%" }, // 1 lower-left
   { left: "15%", top: "38%" }, // 2 upper-left
-  { left: "50%", top: "13%" }, // 3 top
+  { left: "50%", top: "21%" }, // 3 top
   { left: "85%", top: "38%" }, // 4 upper-right
   { left: "85%", top: "69%" }, // 5 lower-right
 ] as const;
 
 const SEAT_POS_9: readonly AnchorPos[] = [
   { left: "50%", top: "80%" }, // 0 hero
-  { left: "10%", top: "74%" },
-  { left: "12%", top: "53%" },
-  { left: "13%", top: "35%" },
-  { left: "28%", top: "15%" },
-  { left: "72%", top: "15%" },
-  { left: "87%", top: "35%" },
-  { left: "88%", top: "53%" },
-  { left: "90%", top: "74%" },
+  { left: "15%", top: "74%" },
+  { left: "15%", top: "53%" },
+  { left: "15%", top: "35%" },
+  { left: "28%", top: "21%" },
+  { left: "72%", top: "21%" },
+  { left: "85%", top: "35%" },
+  { left: "85%", top: "53%" },
+  { left: "85%", top: "74%" },
 ] as const;
 
 const BET_POS_6: readonly AnchorPos[] = [
@@ -124,7 +126,7 @@ const DEALER_POS_6: readonly AnchorPos[] = [
 ] as const;
 
 const DEALER_POS_9: readonly AnchorPos[] = [
-  { left: "62%", top: "77%" },
+  { left: "67%", top: "88%" },
   { left: "22%", top: "74%" },
   { left: "20%", top: "54%" },
   { left: "20%", top: "35%" },
@@ -166,7 +168,7 @@ export function PokerTable({
   playerAvatarIndex,
 }: {
   state: HandState;
-  seatsMeta: SeatMeta[];
+  seatsMeta: (SeatMeta & { countryFlag?: string; rank?: number })[];
   humanSeat: number;
   buttonIndex: number;
   reveal: boolean;
@@ -380,6 +382,8 @@ export function PokerTable({
                 playerCount={n}
                 dealOffset={positionFor(DEAL_FROM_6, DEAL_FROM_9, vi, n)}
                 avatarIndex={isHuman ? playerAvatarIndex : undefined}
+                countryFlag={seatsMeta[p.seat]?.countryFlag ?? (seatsMeta[p.seat]?.isBot ? DEMO_BOT_FLAGS[p.seat % DEMO_BOT_FLAGS.length] : undefined)}
+                rank={seatsMeta[p.seat]?.rank}
               />
             </View>
           </React.Fragment>
@@ -831,8 +835,8 @@ function boardStartOffset(cardCount: number, layout: TableVisualLayout): number 
 
 const styles = StyleSheet.create({
   area: {
-    flex: 1, position: "relative", justifyContent: "center",
-    backgroundColor: "#071528",
+    flex: 1, position: "relative", justifyContent: "center", marginBottom: 128,
+    backgroundColor: "#20130d",
   },
   brand: {
     color: "rgba(221,185,98,0.22)",
@@ -883,7 +887,10 @@ const styles = StyleSheet.create({
   },
   potChip: { width: 14, height: 14, borderRadius: 7, backgroundColor: theme.gold, borderWidth: 2, borderColor: "#fff7d6" },
   potText: {
-    color: theme.gold,
+    color: "#ffe6a1",
+    backgroundColor: "rgba(50,25,12,0.94)",
+    borderWidth: 1, borderColor: "#bb9250", borderRadius: 12, overflow: "hidden",
+    paddingHorizontal: 14, paddingVertical: 3,
     fontWeight: "900",
     fontSize: 15,
     marginTop: -1,
@@ -995,6 +1002,7 @@ const styles = StyleSheet.create({
   },
   dealer: {
     position: "absolute",
+    zIndex: 10,
     width: 26,
     height: 26,
     marginLeft: -13,

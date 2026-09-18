@@ -40,9 +40,9 @@ function GradientButton({
 }
 
 const GRAD = {
-  fold: ["#e05a4a", "#a5261a"] as const,
-  call: ["#3ea877", "#1f6e4a"] as const,
-  raise: ["#f6d365", "#d9a327"] as const,
+  fold: ["#a94945", "#60201f"] as const,
+  call: ["#c85850", "#852b2b"] as const,
+  raise: ["#e26959", "#a53030"] as const,
 };
 
 export function ActionBar({
@@ -127,7 +127,7 @@ export function ActionBar({
           <GradientButton
             disabled={disabled}
             colors={GRAD.raise}
-            textColor="#1a1a1a"
+            textColor="#fff4d7"
             label={state.currentBet > 0 ? "레이즈" : "벳"}
             subLabel={`${fmt(raiseTo)}${raiseTo >= legal.maxRaiseTo ? " 올인" : ""}`}
             onPress={() => onAction({ type: "raise", to: raiseTo })}
@@ -149,29 +149,29 @@ function buildPresets(legal: LegalActions, pot: number) {
 }
 
 const styles = StyleSheet.create({
-  wrap: { paddingHorizontal: 12, paddingBottom: 10, paddingTop: 6 },
+  wrap: { paddingHorizontal: 12, paddingBottom: 10, paddingTop: 8, backgroundColor: "#1d120e", borderTopWidth: 1, borderTopColor: "#664631" },
   raiseRow: { flexDirection: "row", alignItems: "center", marginBottom: 8, flexWrap: "wrap", gap: 6 },
   step: {
-    width: 38, height: 38, borderRadius: 8, backgroundColor: theme.buttonBg,
+    width: 38, height: 38, borderRadius: 19, backgroundColor: "#392c26", borderWidth: 1, borderColor: "#806047",
     alignItems: "center", justifyContent: "center",
   },
   stepText: { color: theme.text, fontSize: 22, fontWeight: "800" },
   raiseAmt: {
-    minWidth: 66, height: 38, borderRadius: 8, backgroundColor: "#00000055",
+    minWidth: 66, height: 38, borderRadius: 19, backgroundColor: "#211611",
     alignItems: "center", justifyContent: "center", paddingHorizontal: 8,
   },
   raiseAmtText: { color: theme.gold, fontSize: 16, fontWeight: "800" },
   preset: {
-    paddingHorizontal: 10, height: 38, borderRadius: 8, backgroundColor: theme.buttonBg,
+    paddingHorizontal: 10, height: 38, borderRadius: 19, backgroundColor: "#392c26", borderWidth: 1, borderColor: "#806047",
     alignItems: "center", justifyContent: "center",
   },
   presetText: { color: theme.text, fontWeight: "700", fontSize: 13 },
   btnRow: { flexDirection: "row", gap: 8 },
   btnWrap: {
-    flex: 1, height: 54, borderRadius: 12, overflow: "hidden",
+    flex: 1, height: 54, borderRadius: 28, overflow: "hidden",
     shadowColor: "#000", shadowOpacity: 0.3, shadowRadius: 4, shadowOffset: { width: 0, height: 2 },
   },
-  btn: { flex: 1, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "rgba(255,255,255,0.15)", borderRadius: 12 },
+  btn: { flex: 1, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "rgba(255,214,163,0.45)", borderRadius: 28 },
   btnText: { color: "#fff", fontWeight: "900", fontSize: 16, lineHeight: 19 },
   btnSubText: { marginTop: 1, fontWeight: "900", fontSize: 13, lineHeight: 15 },
   disabled: { opacity: 0.45 },

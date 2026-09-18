@@ -2,7 +2,7 @@ import React from "react";
 import { Image, StyleSheet, View } from "react-native";
 
 export type TableSurfaceProps = {
-  /** 테이블 배경 이미지. 기본은 승인된 원본 테이블(poker-table.png). */
+  /** 테이블 배경 이미지. 기본은 Prime Poker 샘플 기반 버건디/우드 테이블. */
   surfaceSource?: React.ComponentProps<typeof Image>["source"];
   /** 조명 원 너비(%) */
   lightWidth?: number;
@@ -32,7 +32,7 @@ export function TableSurface({
   return (
     <View style={styles.tableImage}>
       <Image
-        source={surfaceSource ?? require("../../assets/images/poker-table.png")}
+        source={surfaceSource ?? require("../../assets/images/prime-burgundy-table.png")}
         resizeMode="stretch"
         style={[styles.tableBackground, { borderRadius, shadowOpacity, transform: [{ scale }] }]}
       />

@@ -3,6 +3,7 @@ import { Animated, Easing, StyleSheet, Text, View } from "react-native";
 import type { PlayerState } from "@holdem/poker-engine";
 import type { Card } from "@holdem/poker-engine";
 import { theme } from "../theme";
+import { LinearGradient } from "expo-linear-gradient";
 import { Avatar } from "./Avatar";
 import { PlayingCard } from "./PlayingCard";
 import { AnimatedAppear } from "./AnimatedAppear";
@@ -20,6 +21,8 @@ export function TableSeat({
   playerCount,
   dealOffset,
   avatarIndex,
+  countryFlag,
+  rank,
 }: {
   player: PlayerState;
   isHuman: boolean;
@@ -31,6 +34,8 @@ export function TableSeat({
   playerCount: number;
   dealOffset: { x: number; y: number };
   avatarIndex?: number;
+  countryFlag?: string;
+  rank?: number;
 }) {
   const folded = player.status === "folded";
   const out = player.status === "out";
@@ -83,10 +88,10 @@ export function TableSeat({
 
       <View style={[styles.avatarLayer, isHuman && styles.avatarHumanShift]}>
         {isWinner && <WinnerGlow />}
-        <Avatar seat={player.seat} avatarIndex={avatarIndex} size={avatarSize} />
+        <Avatar seat={player.seat} avatarIndex={avatarIndex} size={avatarSize} countryFlag={countryFlag} rank={rank} />
       </View>
 
-      <View style={[styles.plate, isActive && styles.plateActive, isWinner && styles.plateWin]}>
+      <LinearGradient colors={["#c5a66a", "#806039", "#48301b"]} style={[styles.plate, isActive && styles.plateActive, isWinner && styles.plateWin]}>
         <Text style={styles.name} numberOfLines={1}>
           {player.id}
         </Text>
@@ -96,7 +101,7 @@ export function TableSeat({
             <View style={styles.timerFill} />
           </View>
         )}
-      </View>
+      </LinearGradient>
     </View>
   );
 }
@@ -342,21 +347,21 @@ const styles = StyleSheet.create({
     marginTop: -9,
     minWidth: 98,
     backgroundColor: theme.namePlate,
-    borderRadius: 6,
+    borderRadius: 22,
     paddingHorizontal: 8,
     paddingTop: 7,
     paddingBottom: 4,
     alignItems: "center",
     borderWidth: 1.5,
-    borderColor: "transparent",
+    borderColor: "#d5b878",
   },
   plateActive: { borderColor: theme.namePlateActive, shadowColor: theme.gold, shadowOpacity: 0.9, shadowRadius: 8 },
   plateWin: {
     borderColor: "rgba(255,210,89,0.78)",
     backgroundColor: "rgba(18,16,12,0.82)",
   },
-  name: { color: theme.text, fontWeight: "800", fontSize: 11.5, minWidth: 92, textAlign: "center" },
-  stack: { color: theme.gold, fontWeight: "900", fontSize: 14.5 },
+  name: { color: "#fff3d7", fontWeight: "800", fontSize: 11.5, minWidth: 92, textAlign: "center" },
+  stack: { color: "#ffe9a7", fontWeight: "900", fontSize: 14.5 },
   timerTrack: {
     marginTop: 3,
     width: "100%",
