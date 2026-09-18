@@ -24,6 +24,8 @@ import type { SeatMeta } from "../game/useLocalTable";
 import { formatGameMoney } from "../formatMoney";
 import { playSfx } from "../sound/sfx";
 import { SHOWDOWN_FIRE_FRAMES } from "../effects/showdownFrames";
+import { TableSurface } from "./TableSurface";
+import { SideChromeButton, DealerBadge } from "./GameChrome";
 
 const BOARD_REVEAL_DELAY_MS = 500;
 const POT_CENTER_X = 0.5;
@@ -267,44 +269,35 @@ export function PokerTable({
       style={styles.area}
       onLayout={(event: LayoutChangeEvent) => setTableSize(event.nativeEvent.layout)}
     >
-      <View style={styles.tableImage}>
-        <Image
-          source={require("../../assets/images/fanal_table.png")}
-          resizeMode="stretch"
-          style={styles.tableBackground}
-        />
-        <View
-          style={[
-            styles.tableLight,
-            {
-              width: `${layout.tableLightWidthRatio * 100}%`,
-              height: `${layout.tableLightHeightRatio * 100}%`,
-              transform: [{ translateY: layout.tableLightTranslateY }],
-            },
-          ]}
-        >
-            {/* 센터 팟 + 커뮤니티 카드 */}
-            {displayPot > 0 && state.street !== "complete" && (
-              <View
-                style={[
-                  styles.potPill,
-                  {
-                    minWidth: layout.potPillWidth,
-                    minHeight: layout.potPillHeight,
-                    paddingTop: layout.potPillPaddingTop,
-                    paddingBottom: layout.potPillPaddingBottom,
-                    marginTop: layout.potPillMarginTop,
-                  },
-                ]}
-              >
-                <ChipPile amount={displayPot} chipSize={layout.potChipSize} stacks={potStacks} />
-                <Text style={[styles.potText, layout.compact && styles.potTextCompact]}>
-                  팟 {formatGameMoney(displayPot)}
-                </Text>
-              </View>
-            )}
-        </View>
-      </View>
+      <TableSurface
+        lightWidth={layout.tableLightWidthRatio * 100}
+        lightHeight={layout.tableLightHeightRatio * 100}
+        lightTranslateY={layout.tableLightTranslateY}
+        shadowOpacity={0.9}
+        borderRadius={24}
+        scale={1.02}
+      >
+        {/* 센터 팟 + 커뮤니티 카드 */}
+        {displayPot > 0 && state.street !== "complete" && (
+          <View
+            style={[
+              styles.potPill,
+              {
+                minWidth: layout.potPillWidth,
+                minHeight: layout.potPillHeight,
+                paddingTop: layout.potPillPaddingTop,
+                paddingBottom: layout.potPillPaddingBottom,
+                marginTop: layout.potPillMarginTop,
+              },
+            ]}
+          >
+            <ChipPile amount={displayPot} chipSize={layout.potChipSize} stacks={potStacks} />
+            <Text style={[styles.potText, layout.compact && styles.potTextCompact]}>
+              팟 {formatGameMoney(displayPot)}
+            </Text>
+          </View>
+        )}
+      </TableSurface>
 
       <View
         pointerEvents="none"
@@ -353,13 +346,13 @@ export function PokerTable({
       </View>
 
       <View style={styles.sideControls} pointerEvents="none">
-        <View style={styles.sideButton}><Text style={styles.sideButtonText}>♣</Text></View>
-        <View style={styles.sideButton}><Text style={styles.sideButtonText}>⚙</Text></View>
+        <SideChromeButton glyph="♣" onPress={() => {}} />
+        <SideChromeButton glyph="⚙" onPress={() => {}} />
       </View>
 
-      {/* 딜러 버튼 */}
+      {/* 딜러 버튼 — GameChrome 딜러 뱃지 */}
       <View style={[styles.dealer, anchor(positionFor(DEALER_POS_6, DEALER_POS_9, visualOf.get(buttonIndex) ?? 0, n))]}>
-        <Text style={styles.dealerText}>D</Text>
+        <DealerBadge />
       </View>
 
       {/* 좌석 + 베팅칩 */}
@@ -788,38 +781,6 @@ const styles = StyleSheet.create({
     flex: 1, position: "relative", justifyContent: "center",
     backgroundColor: "#071528",
   },
-  tableImage: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000",
-    shadowOpacity: 0.9,
-    shadowRadius: 24,
-    shadowOffset: { width: 0, height: 12 },
-    overflow: "hidden",
-  },
-  tableBackground: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
-    width: "100%",
-    height: "100%",
-    borderRadius: 24,
-    transform: [{ scale: 1.02 }],
-  },
-  tableLight: {
-    width: `${TABLE_LIGHT_WIDTH_RATIO * 100}%`,
-    height: `${TABLE_LIGHT_HEIGHT_RATIO * 100}%`,
-    alignItems: "center",
-    justifyContent: "center",
-    transform: [{ translateY: TABLE_LIGHT_TRANSLATE_Y }],
-  },
   brand: {
     color: "rgba(221,185,98,0.22)",
     fontSize: 26,
@@ -979,27 +940,11 @@ const styles = StyleSheet.create({
   sideControls: {
     position: "absolute", left: 14, bottom: 28, gap: 10, zIndex: 8,
   },
-  sideButton: {
-    width: 46, height: 46, borderRadius: 23,
-    alignItems: "center", justifyContent: "center",
-    backgroundColor: "rgba(42,38,29,0.92)", borderWidth: 2,
-    borderColor: "rgba(219,184,101,0.72)",
-    shadowColor: "#000", shadowOpacity: 0.7, shadowRadius: 5,
-  },
-  sideButtonText: { color: "#e8ddb9", fontSize: 23, fontWeight: "900" },
-
   dealer: {
     position: "absolute",
     width: 26,
     height: 26,
     marginLeft: -13,
     marginTop: -13,
-    borderRadius: 13,
-    backgroundColor: "#f5f5f0",
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 2,
-    borderColor: "#c9962b",
   },
-  dealerText: { color: "#1a1a1a", fontWeight: "900", fontSize: 13 },
 });

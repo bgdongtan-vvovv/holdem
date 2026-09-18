@@ -80,6 +80,43 @@ export function GameChrome({
   );
 }
 
+/**
+ * 측면 컨트롤 버튼(설정, 테이블 이동 등). 포커 테이블 좌우에 배치할 수 있다.
+ */
+export function SideChromeButton({
+  glyph,
+  onPress,
+  label,
+}: {
+  glyph: string;
+  onPress: () => void;
+  label?: string;
+}) {
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label ?? glyph}
+      style={styles.sideButton}
+      onPress={onPress}
+    >
+      <Text style={styles.sideButtonText}>{glyph}</Text>
+      {label ? <Text style={styles.sideButtonLabel}>{label}</Text> : null}
+    </Pressable>
+  );
+}
+
+/**
+ * 딜러 버튼 뱃지 — 테이블 위 D 뱃지(금색 원 + D 텍스트).
+ * 포커 테이블의 딜러 위치에 배치한다.
+ */
+export function DealerBadge() {
+  return (
+    <View style={styles.dealerBadge}>
+      <Text style={styles.dealerBadgeText}>D</Text>
+    </View>
+  );
+}
+
 const styles = StyleSheet.create({
   topBar: {
     position: "absolute",
@@ -136,4 +173,41 @@ const styles = StyleSheet.create({
     fontSize: 11,
     marginTop: 1,
   },
+  sideButton: {
+    width: 46,
+    height: 46,
+    borderRadius: 23,
+    alignItems: "center",
+    justifyContent: "center",
+    backgroundColor: "rgba(42,38,29,0.92)",
+    borderWidth: 2,
+    borderColor: "rgba(219,184,101,0.72)",
+    shadowColor: "#000",
+    shadowOpacity: 0.7,
+    shadowRadius: 5,
+  },
+  sideButtonText: { color: "#e8ddb9", fontSize: 23, fontWeight: "900" },
+  sideButtonLabel: {
+    position: "absolute",
+    bottom: -14,
+    color: "rgba(255,255,255,0.55)",
+    fontSize: 9,
+    fontWeight: "700",
+    backgroundColor: "rgba(0,0,0,0.6)",
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    borderRadius: 5,
+    overflow: "hidden",
+  },
+  dealerBadge: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
+    backgroundColor: "#f5f5f0",
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "#c9962b",
+  },
+  dealerBadgeText: { color: "#1a1a1a", fontWeight: "900", fontSize: 13 },
 });
