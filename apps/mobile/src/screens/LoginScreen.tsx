@@ -3,9 +3,13 @@ import { ImageBackground, Pressable, SafeAreaView, StyleSheet, Text, TextInput, 
 import { StatusBar } from "expo-status-bar";
 import { theme } from "../theme";
 
-export function LoginScreen({ onLogin }: { onLogin: () => void }) {
+export function LoginScreen({ onLogin }: { onLogin: (playerId: string) => void }) {
   const [id, setId] = useState("david3323");
   const [pw, setPw] = useState("password");
+
+  const handleLogin = () => {
+    onLogin(id.trim() || `guest${Math.floor(Math.random() * 100000)}`);
+  };
 
   return (
     <SafeAreaView style={styles.root}>
@@ -59,7 +63,7 @@ export function LoginScreen({ onLogin }: { onLogin: () => void }) {
             />
           </View>
 
-          <Pressable style={styles.loginBtn} onPress={onLogin}>
+          <Pressable style={styles.loginBtn} onPress={handleLogin}>
             <Text style={styles.loginTxt}>로그인</Text>
           </Pressable>
 
@@ -69,9 +73,9 @@ export function LoginScreen({ onLogin }: { onLogin: () => void }) {
             <View style={styles.orLine} />
           </View>
 
-          <SocialButton label="Facebook으로 로그인" glyph="f" bg="#fff" color="#1877f2" onPress={onLogin} />
-          <SocialButton label="Apple으로 로그인" glyph="" bg="#fff" color="#000" onPress={onLogin} />
-          <SocialButton label="Google으로 로그인" glyph="G" bg="#fff" color="#4285F4" onPress={onLogin} />
+          <SocialButton label="Facebook으로 로그인" glyph="f" bg="#fff" color="#1877f2" onPress={handleLogin} />
+          <SocialButton label="Apple으로 로그인" glyph="" bg="#fff" color="#000" onPress={handleLogin} />
+          <SocialButton label="Google으로 로그인" glyph="G" bg="#fff" color="#4285F4" onPress={handleLogin} />
 
           <Text style={styles.footerLinks}>비밀번호 찾기 | 회원가입하기</Text>
           <Text style={styles.version}>2026.06.26.1</Text>

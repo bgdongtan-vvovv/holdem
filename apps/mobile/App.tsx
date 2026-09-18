@@ -9,9 +9,14 @@ import { useScreenOrientation } from "./src/hooks/useScreenOrientation";
 
 type Screen = "login" | "lobby" | "game";
 
+// TODO(형섭): 배포 환경별 서버 주소 설정(env)으로 교체.
+const SERVER_URL = "http://localhost:4000";
+
 export default function App() {
   const [screen, setScreen] = useState<Screen>("login");
   const [playerAvatarIndex, setPlayerAvatarIndex] = useState(0);
+  const [playerId, setPlayerId] = useState("guest");
+  const [activeTableId, setActiveTableId] = useState<string | null>(null);
 
   useScreenOrientation(screen);
 
@@ -27,7 +32,8 @@ export default function App() {
     case "login":
       return (
         <LoginScreen
-          onLogin={async () => {
+          onLogin={async (id) => {
+            setPlayerId(id);
             await enterMobileWebFullscreen();
             await unlockSfx("ui_confirm");
             void playMusic("lobby");
@@ -38,9 +44,12 @@ export default function App() {
     case "lobby":
       return (
         <LobbyScreen
+          serverUrl={SERVER_URL}
+          playerId={playerId}
           playerAvatarIndex={playerAvatarIndex}
           onAvatarChange={setPlayerAvatarIndex}
-          onStartGame={async () => {
+          onEnterTable={async (tableId) => {
+            setActiveTableId(tableId);
             await enterMobileWebFullscreen();
             await unlockSfx("ui_confirm");
             void playMusic("table");
@@ -52,7 +61,9 @@ export default function App() {
       return (
         <GameScreen
           playerAvatarIndex={playerAvatarIndex}
+          remote={activeTableId ? { serverUrl: SERVER_URL, token: playerId, tableId: activeTableId } : undefined}
           onExit={async () => {
+            setActiveTableId(null);
             await enterMobileWebFullscreen();
             await unlockSfx("ui_back");
             void playMusic("lobby");

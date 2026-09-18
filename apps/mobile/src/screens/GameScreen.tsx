@@ -1,17 +1,21 @@
 import React from "react";
-import { Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
-import { HAND_CATEGORY_NAMES, type LegalActions } from "@holdem/poker-engine";
+import { HAND_CATEGORY_NAMES, type Action, type HandState, type LegalActions } from "@holdem/poker-engine";
 import { theme } from "../theme";
 import { PokerTable, ShowdownBurst } from "../components/PokerTable";
 import { ActionBar } from "../components/ActionBar";
-import { useLocalTable, type TableOptions } from "../game/useLocalTable";
+import { useLocalTable, type SeatMeta, type TableOptions } from "../game/useLocalTable";
+import { useRemoteTable, type RemoteTableOptions } from "../game/useRemoteTable";
 import { formatGameMoney } from "../formatMoney";
 import { playSfx, unlockSfx } from "../sound/sfx";
 
 const SMALL_BLIND = 10;
 const BIG_BLIND = 20;
 const SHOWDOWN_CARD_REVEAL_DELAY_MS = 3000;
+const REMOTE_BUY_IN_IN_BIG_BLINDS = 100;
+const REMOTE_SEAT_RETRY_MS = 700;
+const REMOTE_MAX_SEAT_ATTEMPTS = 6;
 
 const SEATS: TableOptions["seats"] = [
   { id: "데이비드", isBot: false, stack: 3072 },
@@ -25,7 +29,26 @@ const SEATS: TableOptions["seats"] = [
   { id: "로얄킹", isBot: true, stack: 1960 },
 ];
 
+/**
+ * 데이터소스 스위치 지점: `remote` 가 주어지면 온라인(useRemoteTable), 없으면 로컬 봇
+ * (useLocalTable) 로 진행한다. 화면/사운드 렌더 로직(TableView)은 두 경로가 공유한다.
+ */
 export function GameScreen({
+  onExit,
+  playerAvatarIndex,
+  remote,
+}: {
+  onExit: () => void;
+  playerAvatarIndex: number;
+  remote?: RemoteTableOptions;
+}) {
+  if (remote) {
+    return <RemoteGameScreen remote={remote} onExit={onExit} playerAvatarIndex={playerAvatarIndex} />;
+  }
+  return <LocalGameScreen onExit={onExit} playerAvatarIndex={playerAvatarIndex} />;
+}
+
+function LocalGameScreen({
   onExit,
   playerAvatarIndex,
 }: {
@@ -35,11 +58,105 @@ export function GameScreen({
   const seats = SEATS.map((seat, index) => ({
     ...seat,
     voice: (index === 0 ? playerAvatarIndex % 2 === 1 : index % 2 === 1)
-      ? "female" as const
-      : "male" as const,
+      ? ("female" as const)
+      : ("male" as const),
   }));
   const table = useLocalTable({ seats, smallBlind: SMALL_BLIND, bigBlind: BIG_BLIND });
-  const { state, seatsMeta, humanSeat, buttonIndex, legal, act, nextHand, handOver } = table;
+
+  return (
+    <TableView
+      onExit={onExit}
+      playerAvatarIndex={playerAvatarIndex}
+      state={table.state}
+      seatsMeta={table.seatsMeta}
+      humanSeat={table.humanSeat}
+      buttonIndex={table.buttonIndex}
+      legal={table.legal}
+      act={table.act}
+      nextHand={table.nextHand}
+      handOver={table.handOver}
+      stakes={{ smallBlind: SMALL_BLIND, bigBlind: BIG_BLIND }}
+      statusOverlay={null}
+    />
+  );
+}
+
+function RemoteGameScreen({
+  remote,
+  onExit,
+  playerAvatarIndex,
+}: {
+  remote: RemoteTableOptions;
+  onExit: () => void;
+  playerAvatarIndex: number;
+}) {
+  const table = useRemoteTable(remote);
+  const { state, humanSeat, sit, connected, error } = table;
+  const [seatAttempt, setSeatAttempt] = React.useState(0);
+
+  // 서버는 "입장 = 관전"이다. 실제로 플레이하려면 착석(sit)이 필요하므로, 연결 후
+  // 빈 좌석을 순서대로 시도한다(0..5). 이미 찬 좌석이면 다음 좌석으로 재시도.
+  React.useEffect(() => {
+    if (!connected || humanSeat !== -1 || seatAttempt >= REMOTE_MAX_SEAT_ATTEMPTS) return;
+    const buyIn = Math.max(state.bigBlind, BIG_BLIND) * REMOTE_BUY_IN_IN_BIG_BLINDS;
+    sit(seatAttempt, buyIn);
+    const retryTimer = setTimeout(() => setSeatAttempt((n) => n + 1), REMOTE_SEAT_RETRY_MS);
+    return () => clearTimeout(retryTimer);
+  }, [connected, humanSeat, seatAttempt, sit, state.bigBlind]);
+
+  const statusOverlay = !connected
+    ? "서버에 연결 중..."
+    : error
+      ? error
+      : humanSeat === -1
+        ? "착석 중..."
+        : null;
+
+  return (
+    <TableView
+      onExit={onExit}
+      playerAvatarIndex={playerAvatarIndex}
+      state={table.state}
+      seatsMeta={table.seatsMeta}
+      humanSeat={table.humanSeat}
+      buttonIndex={table.buttonIndex}
+      legal={table.legal}
+      act={table.act}
+      nextHand={table.nextHand}
+      handOver={table.handOver}
+      stakes={{ smallBlind: table.state.smallBlind || SMALL_BLIND, bigBlind: table.state.bigBlind || BIG_BLIND }}
+      statusOverlay={statusOverlay}
+    />
+  );
+}
+
+function TableView({
+  onExit,
+  playerAvatarIndex,
+  state,
+  seatsMeta,
+  humanSeat,
+  buttonIndex,
+  legal,
+  act,
+  nextHand,
+  handOver,
+  stakes,
+  statusOverlay,
+}: {
+  onExit: () => void;
+  playerAvatarIndex: number;
+  state: HandState;
+  seatsMeta: SeatMeta[];
+  humanSeat: number;
+  buttonIndex: number;
+  legal: LegalActions | null;
+  act: (action: Action) => void;
+  nextHand: () => void;
+  handOver: boolean;
+  stakes: { smallBlind: number; bigBlind: number };
+  statusOverlay: string | null;
+}) {
   const [showdownCardsReady, setShowdownCardsReady] = React.useState(false);
   const [showdownEffectActive, setShowdownEffectActive] = React.useState(false);
   const [showdownEffectKey, setShowdownEffectKey] = React.useState(0);
@@ -55,10 +172,10 @@ export function GameScreen({
     canFold: true,
     canCheck: false,
     canCall: true,
-    callAmount: BIG_BLIND,
+    callAmount: stakes.bigBlind,
     canRaise: true,
-    minRaiseTo: BIG_BLIND * 2,
-    maxRaiseTo: BIG_BLIND * 10,
+    minRaiseTo: stakes.bigBlind * 2,
+    maxRaiseTo: stakes.bigBlind * 10,
   });
   if (legal) lastLegal.current = legal;
   const actionBarLegal = legal ?? lastLegal.current;
@@ -111,7 +228,7 @@ export function GameScreen({
           </View>
           <View style={styles.topRight}>
             <Text style={styles.stakeBadge}>
-              {formatGameMoney(SMALL_BLIND)} / {formatGameMoney(BIG_BLIND)}
+              {formatGameMoney(stakes.smallBlind)} / {formatGameMoney(stakes.bigBlind)}
             </Text>
             <View style={styles.moveBtn}>
               <Text style={styles.moveTxt}>테이블 이동</Text>
@@ -130,6 +247,13 @@ export function GameScreen({
         />
 
         {showdownEffectActive && <ShowdownBurst key={showdownEffectKey} />}
+
+        {statusOverlay ? (
+          <View style={styles.statusOverlay}>
+            <ActivityIndicator color={theme.gold} />
+            <Text style={styles.statusOverlayTxt}>{statusOverlay}</Text>
+          </View>
+        ) : null}
 
         <View style={styles.footer}>
           {handOver ? (
@@ -152,7 +276,7 @@ function ResultPanel({
   state,
   onNext,
 }: {
-  state: ReturnType<typeof useLocalTable>["state"];
+  state: HandState;
   onNext: () => void;
 }) {
   const result = state.result;
@@ -234,6 +358,25 @@ const styles = StyleSheet.create({
     overflow: "hidden",
   },
   waiting: { color: theme.textMuted, textAlign: "center", fontStyle: "italic", paddingVertical: 24 },
+  statusOverlay: {
+    position: "absolute",
+    top: "42%",
+    left: 0,
+    right: 0,
+    alignItems: "center",
+    gap: 8,
+    zIndex: 19,
+    elevation: 19,
+  },
+  statusOverlayTxt: {
+    color: theme.text,
+    fontSize: 13,
+    fontWeight: "800",
+    backgroundColor: "rgba(0,0,0,0.55)",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 10,
+  },
   resultWrap: { alignItems: "center", padding: 16, gap: 12 },
   resultText: { color: theme.text, fontSize: 15, fontWeight: "700", textAlign: "center" },
   nextBtn: { backgroundColor: theme.gold, paddingHorizontal: 28, paddingVertical: 14, borderRadius: 12 },
