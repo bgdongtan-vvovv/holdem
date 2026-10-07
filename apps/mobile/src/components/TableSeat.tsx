@@ -28,6 +28,7 @@ export function TableSeat({
   rank,
   cardsOpened,
   onOpenCards,
+  reaction,
 }: {
   player: PlayerState;
   isHuman: boolean;
@@ -44,6 +45,8 @@ export function TableSeat({
   /** 사람 좌석 전용: 내 홀카드를 아직 직접 열어보지 않았으면 false. */
   cardsOpened?: boolean;
   onOpenCards?: () => void;
+  /** key 가 바뀔 때마다 새로 떠오르는 이모지 반응 말풍선. */
+  reaction?: { emoji: string; key: number };
 }) {
   const folded = player.status === "folded";
   const out = player.status === "out";
@@ -117,6 +120,7 @@ export function TableSeat({
       <View style={[styles.avatarLayer, isHuman && styles.avatarHumanShift]}>
         {isWinner && <WinnerGlow />}
         <Avatar seat={player.seat} avatarIndex={avatarIndex} size={avatarSize} countryFlag={countryFlag} rank={rank} />
+        {reaction && <ReactionBubble key={reaction.key} emoji={reaction.emoji} />}
       </View>
 
       <LinearGradient colors={["#c5a66a", "#806039", "#48301b"]} style={[styles.plate, isActive && styles.plateActive, isWinner && styles.plateWin]}>
@@ -136,6 +140,47 @@ export function TableSeat({
         )}
       </LinearGradient>
     </View>
+  );
+}
+
+const REACTION_LIFETIME_MS = 1800;
+
+/** 아바타 위로 떠오르는 이모지 반응 말풍선. 팝업 → 살짝 위로 떠오름 → 페이드아웃. */
+function ReactionBubble({ emoji }: { emoji: string }) {
+  const progress = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    progress.setValue(0);
+    const anim = Animated.sequence([
+      Animated.spring(progress, { toValue: 1, useNativeDriver: true, friction: 5, tension: 120 }),
+      Animated.timing(progress, {
+        toValue: 2,
+        duration: REACTION_LIFETIME_MS - 260,
+        easing: Easing.out(Easing.cubic),
+        useNativeDriver: true,
+        delay: 260,
+      }),
+    ]);
+    anim.start();
+    return () => anim.stop();
+  }, [progress]);
+
+  return (
+    <Animated.View
+      style={[
+        styles.reactionBubble,
+        {
+          opacity: progress.interpolate({ inputRange: [0, 0.3, 1.5, 2], outputRange: [0, 1, 1, 0] }),
+          transform: [
+            { translateY: progress.interpolate({ inputRange: [0, 1, 2], outputRange: [8, -6, -26] }) },
+            { scale: progress.interpolate({ inputRange: [0, 0.6, 1, 2], outputRange: [0.4, 1.12, 1, 0.92] }) },
+          ],
+        },
+      ]}
+      pointerEvents="none"
+    >
+      <Text style={styles.reactionBubbleText}>{emoji}</Text>
+    </Animated.View>
   );
 }
 
@@ -388,6 +433,21 @@ const styles = StyleSheet.create({
   avatarHumanShift: {
     transform: [{ translateX: -26 }],
   },
+  reactionBubble: {
+    position: "absolute",
+    top: -26,
+    alignSelf: "center",
+    zIndex: 14,
+    backgroundColor: "rgba(20,16,12,0.85)",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "rgba(215,168,61,0.6)",
+    width: 32,
+    height: 32,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  reactionBubbleText: { fontSize: 17 },
   avatarGlow: {
     position: "absolute",
     left: -16,

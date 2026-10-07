@@ -16,6 +16,8 @@ const SHOWDOWN_CARD_REVEAL_DELAY_MS = 3000;
 const REMOTE_BUY_IN_IN_BIG_BLINDS = 100;
 const REMOTE_SEAT_RETRY_MS = 700;
 const REMOTE_MAX_SEAT_ATTEMPTS = 6;
+const BOT_REACTION_EMOJIS = ["🤔", "😮", "😏", "🔥", "👍"];
+const QUICK_REACTION_EMOJIS = ["😂", "😮", "🤔", "👍", "🔥"];
 
 const SEATS: TableOptions["seats"] = [
   { id: "데이비드", isBot: false, stack: 3072 },
@@ -176,6 +178,30 @@ function TableView({
     playSfx("card_flip");
   }, []);
 
+  // 좌석별 이모지 반응 말풍선. key 가 바뀌면 같은 이모지라도 애니메이션이 다시 트리거된다.
+  const [reactions, setReactions] = React.useState<Record<number, { emoji: string; key: number }>>({});
+  const reactionKeyRef = React.useRef(0);
+  const sendReaction = React.useCallback((seat: number, emoji: string) => {
+    reactionKeyRef.current += 1;
+    setReactions((prev) => ({ ...prev, [seat]: { emoji, key: reactionKeyRef.current } }));
+  }, []);
+
+  // 봇이 액션할 때 가끔(약 15%) 알아서 리액션을 보내 테이블이 덜 썰렁하게 만든다.
+  const lastActingSeatRef = React.useRef<number>(-1);
+  React.useEffect(() => {
+    if (state.actingIndex < 0 || state.actingIndex === lastActingSeatRef.current) return;
+    lastActingSeatRef.current = state.actingIndex;
+    const actingSeat = state.players[state.actingIndex]?.seat;
+    if (actingSeat === undefined || actingSeat === humanSeat) return;
+    if (!seatsMeta[actingSeat]?.isBot) return;
+    if (Math.random() > 0.15) return;
+    const emoji = BOT_REACTION_EMOJIS[Math.floor(Math.random() * BOT_REACTION_EMOJIS.length)]!;
+    const timer = setTimeout(() => sendReaction(actingSeat, emoji), 300 + Math.random() * 500);
+    return () => clearTimeout(timer);
+  }, [state.actingIndex, state.players, seatsMeta, humanSeat, sendReaction]);
+
+  const [reactionPickerOpen, setReactionPickerOpen] = React.useState(false);
+
   const unlockAudioOnce = React.useCallback(() => {
     if (audioUnlocked.current) return;
     audioUnlocked.current = true;
@@ -235,6 +261,9 @@ function TableView({
             <Pressable style={styles.iconBtn} onPress={onExit}>
               <Text style={styles.iconTxt}>⎋</Text>
             </Pressable>
+            <Pressable style={styles.iconBtnSm} onPress={() => playSfx("ui_click")}>
+              <Text style={styles.iconTxtSm}>🂠</Text>
+            </Pressable>
             <View style={styles.network}>
               <Text style={styles.wifi}>◉</Text>
               <Text style={styles.ping}>66ms</Text>
@@ -247,6 +276,9 @@ function TableView({
             <View style={styles.moveBtn}>
               <Text style={styles.moveTxt}>테이블 이동</Text>
             </View>
+            <Pressable style={styles.iconBtnSm} onPress={() => playSfx("ui_click")}>
+              <Text style={styles.iconTxtSm}>⋮</Text>
+            </Pressable>
           </View>
         </View>
 
@@ -260,6 +292,7 @@ function TableView({
           playerAvatarIndex={playerAvatarIndex}
           humanCardsOpened={humanCardsOpened}
           onOpenHumanCards={openHumanCards}
+          reactions={reactions}
         />
 
         {showdownEffectActive && <ShowdownBurst key={showdownEffectKey} />}
@@ -270,6 +303,38 @@ function TableView({
             <Text style={styles.statusOverlayTxt}>{statusOverlay}</Text>
           </View>
         ) : null}
+
+        {humanSeat >= 0 && (
+          <View style={styles.reactionDock}>
+            {reactionPickerOpen && (
+              <View style={styles.reactionPicker}>
+                {QUICK_REACTION_EMOJIS.map((emoji) => (
+                  <Pressable
+                    key={emoji}
+                    style={styles.reactionPickerItem}
+                    onPress={() => {
+                      sendReaction(humanSeat, emoji);
+                      setReactionPickerOpen(false);
+                      void unlockSfx("ui_click");
+                      playSfx("ui_click");
+                    }}
+                  >
+                    <Text style={styles.reactionPickerEmoji}>{emoji}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            )}
+            <Pressable
+              style={styles.reactionToggle}
+              onPress={() => {
+                setReactionPickerOpen((v) => !v);
+                playSfx("ui_click");
+              }}
+            >
+              <Text style={styles.reactionToggleTxt}>💬</Text>
+            </Pressable>
+          </View>
+        )}
 
         <View style={styles.footer}>
           {handOver ? (
@@ -348,6 +413,11 @@ const styles = StyleSheet.create({
     shadowColor: "#000", shadowOpacity: 0.8, shadowRadius: 5,
   },
   iconTxt: { color: theme.text, fontSize: 25, fontWeight: "900" },
+  iconBtnSm: {
+    width: 38, height: 38, borderRadius: 19, backgroundColor: "#353636",
+    alignItems: "center", justifyContent: "center", borderWidth: 1.5, borderColor: "#77705c",
+  },
+  iconTxtSm: { color: theme.text, fontSize: 18, fontWeight: "900" },
   network: { alignItems: "center", justifyContent: "center" },
   wifi: { color: "#2ef28a", fontWeight: "900", fontSize: 25, lineHeight: 25 },
   ping: { color: "#fff", fontWeight: "800", fontSize: 13 },
@@ -393,6 +463,44 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: 10,
   },
+  reactionDock: {
+    position: "absolute",
+    right: 14,
+    bottom: 138,
+    zIndex: 17,
+    elevation: 17,
+    alignItems: "flex-end",
+    gap: 8,
+  },
+  reactionToggle: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: "rgba(20,16,12,0.78)",
+    borderWidth: 1.5,
+    borderColor: "rgba(215,168,61,0.5)",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  reactionToggleTxt: { fontSize: 20 },
+  reactionPicker: {
+    flexDirection: "row",
+    backgroundColor: "rgba(20,16,12,0.9)",
+    borderRadius: 24,
+    borderWidth: 1.5,
+    borderColor: "rgba(215,168,61,0.5)",
+    paddingHorizontal: 6,
+    paddingVertical: 6,
+    gap: 2,
+  },
+  reactionPickerItem: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  reactionPickerEmoji: { fontSize: 20 },
   resultWrap: { alignItems: "center", padding: 16, gap: 12 },
   resultText: { color: theme.text, fontSize: 15, fontWeight: "700", textAlign: "center" },
   nextBtn: { backgroundColor: theme.gold, paddingHorizontal: 28, paddingVertical: 14, borderRadius: 12 },

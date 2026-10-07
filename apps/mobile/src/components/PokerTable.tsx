@@ -168,6 +168,7 @@ export function PokerTable({
   playerAvatarIndex,
   humanCardsOpened,
   onOpenHumanCards,
+  reactions,
 }: {
   state: HandState;
   seatsMeta: (SeatMeta & { countryFlag?: string; rank?: number })[];
@@ -178,6 +179,8 @@ export function PokerTable({
   playerAvatarIndex: number;
   humanCardsOpened?: boolean;
   onOpenHumanCards?: () => void;
+  /** 좌석(seat) -> 현재 떠 있는 이모지 반응. */
+  reactions?: Record<number, { emoji: string; key: number }>;
 }) {
   const [tableSize, setTableSize] = useState({ width: 0, height: 0 });
   const layout = React.useMemo(() => makeTableLayout(tableSize), [tableSize]);
@@ -390,6 +393,7 @@ export function PokerTable({
                 rank={seatsMeta[p.seat]?.rank}
                 cardsOpened={isHuman ? humanCardsOpened : undefined}
                 onOpenCards={isHuman ? onOpenHumanCards : undefined}
+                reaction={reactions?.[p.seat]}
               />
             </View>
           </React.Fragment>
