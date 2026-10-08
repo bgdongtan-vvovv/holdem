@@ -1,10 +1,11 @@
 import React from "react";
-import { ActivityIndicator, Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
+import { ActivityIndicator, Animated, Easing, Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { HAND_CATEGORY_NAMES, type Action, type HandState, type LegalActions } from "@holdem/poker-engine";
 import { prime, type FeltId } from "../components/primeTheme";
 import { GameMenuSheet, GameTopBar, RoundDockButton } from "../components/GameChrome";
 import { PokerTable, ShowdownBurst } from "../components/PokerTable";
+import { CardBack } from "../components/PlayingCard";
 import { ActionBar } from "../components/ActionBar";
 import { useLocalTable, type SeatMeta, type TableOptions } from "../game/useLocalTable";
 import { useRemoteTable, type RemoteTableOptions } from "../game/useRemoteTable";
@@ -258,6 +259,9 @@ function TableView({
   const hero = humanSeat >= 0 ? state.players[humanSeat] : undefined;
   const heroCards = hero && humanCardsOpened && hero.holeCards.length > 0 ? hero.holeCards : null;
   const stakesLabel = `NL Hold'em · ${formatGameMoney(stakes.smallBlind)} / ${formatGameMoney(stakes.bigBlind)}`;
+  // 새 핸드를 받았는데 아직 직접 열어보지 않았으면, 액션바 대신 큰 카드 오픈 연출을 보여준다
+  // (샘플사진의 "틸트된 큰 카드 + Open 버튼" 장면).
+  const needsBigOpen = !!hero && !handOver && hero.holeCards.length > 0 && !humanCardsOpened;
 
   return (
     <SafeAreaView style={styles.root}>
@@ -330,7 +334,9 @@ function TableView({
         </View>
 
         <View style={styles.footer} pointerEvents="box-none">
-          {handOver ? (
+          {needsBigOpen ? (
+            <BigCardOpenPrompt onOpen={openHumanCards} />
+          ) : handOver ? (
             <ResultPanel state={state} onNext={nextHand} />
           ) : (
             <ActionBar
@@ -356,6 +362,66 @@ function TableView({
         )}
       </View>
     </SafeAreaView>
+  );
+}
+
+const BIG_OPEN_CARD_W = 128;
+const BIG_OPEN_CARD_H = 180;
+
+/**
+ * 새 핸드가 배정됐을 때 액션바 자리에 뜨는 "큰 틸트 카드 + Open 버튼" 연출
+ * (샘플사진의 해당 장면 참고). 카드나 버튼 아무 쪽을 눌러도 열린다.
+ */
+function BigCardOpenPrompt({ onOpen }: { onOpen: () => void }) {
+  const enter = React.useRef(new Animated.Value(0)).current;
+
+  React.useEffect(() => {
+    enter.setValue(0);
+    Animated.timing(enter, {
+      toValue: 1,
+      duration: 480,
+      easing: Easing.out(Easing.back(1.2)),
+      useNativeDriver: true,
+    }).start();
+  }, [enter]);
+
+  return (
+    <View style={styles.bigOpenWrap} pointerEvents="box-none">
+      <Pressable
+        style={styles.bigOpenCardTouch}
+        onPress={() => {
+          playSfx("ui_click");
+          onOpen();
+        }}
+      >
+        <Animated.View
+          style={[
+            styles.bigOpenCard,
+            {
+              opacity: enter,
+              transform: [
+                { perspective: 800 },
+                { rotateX: "18deg" },
+                { rotate: enter.interpolate({ inputRange: [0, 1], outputRange: ["-18deg", "-8deg"] }) },
+                { scale: enter.interpolate({ inputRange: [0, 1], outputRange: [0.6, 1] }) },
+              ],
+            },
+          ]}
+        >
+          <CardBack width={BIG_OPEN_CARD_W} height={BIG_OPEN_CARD_H} radius={10} />
+        </Animated.View>
+      </Pressable>
+
+      <Pressable
+        style={styles.bigOpenBtn}
+        onPress={() => {
+          playSfx("ui_click");
+          onOpen();
+        }}
+      >
+        <Text style={styles.bigOpenBtnText}>Open</Text>
+      </Pressable>
+    </View>
   );
 }
 
@@ -469,4 +535,33 @@ const styles = StyleSheet.create({
     borderColor: prime.redGlow,
   },
   nextText: { color: "#fff", fontWeight: "800", fontSize: 15 },
+  bigOpenWrap: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 28,
+    paddingVertical: 24,
+    paddingHorizontal: 20,
+    backgroundColor: "rgba(10,8,6,0.55)",
+  },
+  bigOpenCardTouch: { alignItems: "center", justifyContent: "center" },
+  bigOpenCard: {
+    shadowColor: "#000",
+    shadowOpacity: 0.6,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 10 },
+  },
+  bigOpenBtn: {
+    backgroundColor: "#2bc76a",
+    borderWidth: 1,
+    borderColor: "#7bf0a4",
+    borderRadius: 24,
+    paddingHorizontal: 30,
+    paddingVertical: 14,
+    shadowColor: "#000",
+    shadowOpacity: 0.4,
+    shadowRadius: 8,
+    shadowOffset: { width: 0, height: 4 },
+  },
+  bigOpenBtnText: { color: "#fff", fontWeight: "900", fontSize: 18 },
 });
