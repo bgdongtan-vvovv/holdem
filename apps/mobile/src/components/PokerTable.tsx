@@ -255,8 +255,8 @@ export function PokerTable({
             ))}
           </View>
 
-          {/* 팟 칩 더미 + 금액 */}
-          {displayPot > 0 && state.street !== "complete" && (
+          {/* 팟 칩 더미 + 금액 — 쇼다운/결과 때도 샘플처럼 보드카드 앞에 계속 보여준다. */}
+          {displayPot > 0 && (
             <View
               pointerEvents="none"
               style={[styles.potPile, { left: center.x - potPile.width / 2, top: center.y - potPile.height / 2 }]}
@@ -690,7 +690,7 @@ const styles = StyleSheet.create({
   potLabelAmount: { color: prime.gold, fontWeight: "800", fontSize: 15, lineHeight: 18 },
   boardLayer: { position: "absolute", height: 96, zIndex: 9 },
   boardCard: { position: "absolute", top: 0, alignItems: "center" },
-  potPile: { position: "absolute", alignItems: "center", zIndex: 7 },
+  potPile: { position: "absolute", alignItems: "center", zIndex: 10 },
   potAmount: {
     marginTop: -2,
     color: "#f1f1f1",

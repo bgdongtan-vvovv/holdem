@@ -87,7 +87,11 @@ export function TableSeat({
     }).start();
   }, [isActive, timerProgress]);
 
-  const cardSize = isHuman ? "md" : showCards ? "sm" : "sm";
+  const cardSize = isHuman ? "lg" : "sm";
+  // 핸드가 배정된 좌석(내 카드든, 서버가 아직 안 가린 상대 카드든, 뒷면만 아는 상대든)은
+  // 쇼다운에서 실제 카드가 드러나도 같은 카드 슬롯(key)을 유지해 재배치 애니메이션이
+  // 다시 재생되지 않도록 한다 — hasCards/showBacks 두 분기를 하나로 합침.
+  const dealt = hasCards || showBacks;
 
   return (
     <View style={[styles.wrap, (folded || out) && styles.folded]}>
@@ -103,50 +107,36 @@ export function TableSeat({
         {isWinner && <WinnerGlow />}
         <Avatar seat={player.seat} avatarIndex={avatarIndex} size={avatarSize} countryFlag={countryFlag} rank={rank} />
 
-        {hasCards && (
+        {dealt && (
           <View
             style={[
               styles.cards,
               isHuman ? styles.cardsHuman : styles.cardsOther,
             ]}
           >
-            {player.holeCards.map((c, i) => (
-              <DealtCard
-                key={cardKey(c)}
-                delay={(i * playerCount + dealIndex) * 270}
-                from={dealOffset}
-                overlap={i === 0 ? 0 : isHuman ? -6 : -14}
-                settleY={!isHuman && i === 1 ? 1 : 0}
-                rotateTo={isHuman ? "0deg" : i === 0 ? "-7deg" : "7deg"}
-              >
-                <PlayingCard
-                  card={c}
-                  hidden={!showCards}
-                  size={cardSize}
-                  highlighted={showCards && matchedCards?.has(cardKey(c))}
-                />
-              </DealtCard>
-            ))}
+            {[0, 1].map((i) => {
+              const c = player.holeCards[i];
+              return (
+                <DealtCard
+                  key={`slot-${i}`}
+                  delay={(i * playerCount + dealIndex) * 270}
+                  from={dealOffset}
+                  overlap={i === 0 ? 0 : isHuman ? -6 : -14}
+                  settleY={!isHuman && i === 1 ? 1 : 0}
+                  rotateTo={isHuman ? "0deg" : i === 0 ? "-7deg" : "7deg"}
+                >
+                  <PlayingCard
+                    card={c}
+                    hidden={!showCards}
+                    size={cardSize}
+                    highlighted={!!c && showCards && matchedCards?.has(cardKey(c))}
+                  />
+                </DealtCard>
+              );
+            })}
             {isHuman && cardsOpened !== undefined && (
               <CardPeekOverlay visible={needsOpen} onOpened={onOpenCards} />
             )}
-          </View>
-        )}
-
-        {showBacks && (
-          <View style={[styles.cards, styles.cardsOther]}>
-            {[0, 1].map((i) => (
-              <DealtCard
-                key={`back-${i}`}
-                delay={(i * playerCount + dealIndex) * 270}
-                from={dealOffset}
-                overlap={i === 0 ? 0 : -14}
-                settleY={i === 1 ? 1 : 0}
-                rotateTo={i === 0 ? "-7deg" : "7deg"}
-              >
-                <PlayingCard hidden size="sm" />
-              </DealtCard>
-            ))}
           </View>
         )}
 
