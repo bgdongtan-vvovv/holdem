@@ -1,5 +1,6 @@
 import React from "react";
 import { Image, StyleSheet, Text, View } from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
 import { feltSource, prime, type FeltId } from "./primeTheme";
 
 /**
@@ -19,6 +20,15 @@ export function TableSurface({
   return (
     <View style={styles.root} pointerEvents="box-none">
       <Image source={feltSource(felt)} resizeMode="cover" style={styles.background} />
+      {/* 레퍼런스 사진 그대로처럼 보이지 않도록 우리 브랜드 골드 톤의 은은한 컬러그레이딩을 얹는다. */}
+      <LinearGradient
+        colors={["rgba(40,16,6,0.28)", "rgba(0,0,0,0)", "rgba(8,20,22,0.3)"]}
+        locations={[0, 0.5, 1]}
+        start={{ x: 0.1, y: 0 }}
+        end={{ x: 0.9, y: 1 }}
+        style={StyleSheet.absoluteFillObject}
+        pointerEvents="none"
+      />
       <View style={[styles.logo, { top: logoTop }]} pointerEvents="none">
         <TableLogo />
       </View>

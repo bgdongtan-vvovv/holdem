@@ -4,8 +4,8 @@ import { StatusBar } from "expo-status-bar";
 import { HAND_CATEGORY_NAMES, type Action, type HandState, type LegalActions } from "@holdem/poker-engine";
 import { prime, type FeltId } from "../components/primeTheme";
 import { GameMenuSheet, GameTopBar, RoundDockButton } from "../components/GameChrome";
+import { LinearGradient } from "expo-linear-gradient";
 import { PokerTable, ShowdownBurst } from "../components/PokerTable";
-import { CardBack } from "../components/PlayingCard";
 import { ActionBar } from "../components/ActionBar";
 import { useLocalTable, type SeatMeta, type TableOptions } from "../game/useLocalTable";
 import { useRemoteTable, type RemoteTableOptions } from "../game/useRemoteTable";
@@ -369,6 +369,72 @@ const BIG_OPEN_CARD_W = 128;
 const BIG_OPEN_CARD_H = 180;
 
 /**
+ * "큰 카드 오픈" 연출 전용 뒷면 — 평소 테이블의 버건디 카드백과는 다른, 샘플사진의
+ * 은색 금속 테두리 + 다이아몬드 격자 패턴을 흉내낸 전용 디자인. 금속 하이라이트 띠와
+ * 강한 그림자로 "기울어진 채 떠 있는 카드"의 입체감을 낸다.
+ */
+function BigSilverCardBack({ width, height }: { width: number; height: number }) {
+  const cols = 6;
+  const rows = 8;
+  const cellW = width / cols;
+  const cellH = height / rows;
+  const diamondSize = Math.min(cellW, cellH) * 0.56;
+
+  return (
+    <View style={[styles.silverCardOuter, { width, height }]}>
+      {/* 금속 테두리 */}
+      <LinearGradient
+        colors={["#f4f6f8", "#aab2bb", "#e9edf1", "#8b939c"]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={StyleSheet.absoluteFill}
+      />
+      {/* 안쪽 패널 */}
+      <LinearGradient
+        colors={["#5c646d", "#3c424a", "#4a515a"]}
+        start={{ x: 0.15, y: 0 }}
+        end={{ x: 0.9, y: 1 }}
+        style={styles.silverCardInner}
+      >
+        {/* 다이아몬드 격자 패턴 */}
+        <View style={StyleSheet.absoluteFill}>
+          {Array.from({ length: rows }).map((_, r) =>
+            Array.from({ length: cols }).map((_, c) => (
+              <View
+                key={`${r}-${c}`}
+                style={[
+                  styles.silverDiamond,
+                  {
+                    width: diamondSize,
+                    height: diamondSize,
+                    left: c * cellW + (cellW - diamondSize) / 2 + (r % 2 === 0 ? cellW / 2 : 0),
+                    top: r * cellH + (cellH - diamondSize) / 2,
+                  },
+                ]}
+              />
+            )),
+          )}
+        </View>
+        {/* 광택 하이라이트 띠 — 금속 재질 입체감 */}
+        <LinearGradient
+          colors={["rgba(255,255,255,0)", "rgba(255,255,255,0.38)", "rgba(255,255,255,0)"]}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 0.7 }}
+          style={styles.silverShine}
+        />
+        {/* 아래쪽 비네트 — 빛을 받는 방향과 반대쪽을 어둡게 눌러 입체감 강화 */}
+        <LinearGradient
+          colors={["rgba(0,0,0,0)", "rgba(0,0,0,0.42)"]}
+          start={{ x: 0, y: 0.55 }}
+          end={{ x: 1, y: 1 }}
+          style={StyleSheet.absoluteFill}
+        />
+      </LinearGradient>
+    </View>
+  );
+}
+
+/**
  * 새 핸드가 배정됐을 때 액션바 자리에 뜨는 "큰 틸트 카드 + Open 버튼" 연출
  * (샘플사진의 해당 장면 참고). 카드나 버튼 아무 쪽을 눌러도 열린다.
  */
@@ -401,14 +467,14 @@ function BigCardOpenPrompt({ onOpen }: { onOpen: () => void }) {
               opacity: enter,
               transform: [
                 { perspective: 800 },
-                { rotateX: "18deg" },
+                { rotateX: "22deg" },
                 { rotate: enter.interpolate({ inputRange: [0, 1], outputRange: ["-18deg", "-8deg"] }) },
                 { scale: enter.interpolate({ inputRange: [0, 1], outputRange: [0.6, 1] }) },
               ],
             },
           ]}
         >
-          <CardBack width={BIG_OPEN_CARD_W} height={BIG_OPEN_CARD_H} radius={10} />
+          <BigSilverCardBack width={BIG_OPEN_CARD_W} height={BIG_OPEN_CARD_H} />
         </Animated.View>
       </Pressable>
 
@@ -547,10 +613,34 @@ const styles = StyleSheet.create({
   bigOpenCardTouch: { alignItems: "center", justifyContent: "center" },
   bigOpenCard: {
     shadowColor: "#000",
-    shadowOpacity: 0.6,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 10 },
+    shadowOpacity: 0.65,
+    shadowRadius: 22,
+    shadowOffset: { width: 6, height: 16 },
   },
+  silverCardOuter: {
+    borderRadius: 11,
+    padding: 4,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOpacity: 0.4,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
+  },
+  silverCardInner: {
+    flex: 1,
+    borderRadius: 7,
+    overflow: "hidden",
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.35)",
+  },
+  silverDiamond: {
+    position: "absolute",
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.16)",
+    backgroundColor: "rgba(255,255,255,0.03)",
+    transform: [{ rotate: "45deg" }],
+  },
+  silverShine: { ...StyleSheet.absoluteFillObject, transform: [{ rotate: "-18deg" }, { scale: 1.6 }] },
   bigOpenBtn: {
     backgroundColor: "#2bc76a",
     borderWidth: 1,

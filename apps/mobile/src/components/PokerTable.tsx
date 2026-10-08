@@ -690,7 +690,7 @@ const styles = StyleSheet.create({
   potLabelAmount: { color: prime.gold, fontWeight: "800", fontSize: 15, lineHeight: 18 },
   boardLayer: { position: "absolute", height: 96, zIndex: 9 },
   boardCard: { position: "absolute", top: 0, alignItems: "center" },
-  potPile: { position: "absolute", alignItems: "center", zIndex: 10 },
+  potPile: { position: "absolute", alignItems: "center", zIndex: 15 },
   potAmount: {
     marginTop: -2,
     color: "#f1f1f1",
