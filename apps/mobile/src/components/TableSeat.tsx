@@ -331,18 +331,39 @@ const PEEK_OPEN_THRESHOLD = 0.55; // 손을 뗐을 때 이 비율 이상이면 �
  * 내 홀카드 위에 겹쳐지는 뒷면 카드. 손가락으로 끌면(방향 무관, 거리 기준)
  * 서서히 젖혀지며 아래의 실제 카드가 드러난다. 임계값 전에 손을 떼면 다시 덮인다.
  */
+/** 터치 시작점이 카드 영역의 이 비율보다 오른쪽이거나 아래쪽이면 "가장자리"로 인정한다. */
+const PEEK_EDGE_RATIO = 0.6;
+
 function CardPeekOverlay({ visible, onOpened }: { visible: boolean; onOpened?: () => void }) {
   const progress = useRef(new Animated.Value(0)).current;
+  // 카드 쌍의 실측 크기(최초 추정값은 lg 카드 2장 겹친 대략값) — onLayout 으로 갱신.
+  const dimsRef = useRef({ width: 118, height: 86 });
+  // 이번 제스처가 가장자리에서 시작했는지 — move/release 단계에서도 계속 참조해야 해서 ref로 들고 있음.
+  const startedAtEdge = useRef(false);
+
+  const isEdgeTouch = (evt: { nativeEvent: { locationX: number; locationY: number } }) => {
+    const { locationX, locationY } = evt.nativeEvent;
+    const { width, height } = dimsRef.current;
+    return locationX >= width * PEEK_EDGE_RATIO || locationY >= height * PEEK_EDGE_RATIO;
+  };
 
   const panResponder = useRef(
     PanResponder.create({
-      onStartShouldSetPanResponder: () => true,
-      onMoveShouldSetPanResponderCapture: (_, g) => Math.abs(g.dx) > 2 || Math.abs(g.dy) > 2,
+      // 카드 아무 데나 눌러서는 안 열리고, 아래/오른쪽 가장자리에서 터치를 시작해야만 제스처를 가져간다.
+      onStartShouldSetPanResponder: (evt) => {
+        startedAtEdge.current = isEdgeTouch(evt);
+        return startedAtEdge.current;
+      },
+      onMoveShouldSetPanResponderCapture: (_, g) =>
+        startedAtEdge.current && (Math.abs(g.dx) > 2 || Math.abs(g.dy) > 2),
       onPanResponderMove: (_, g) => {
+        if (!startedAtEdge.current) return;
         const dist = Math.max(Math.abs(g.dx), Math.abs(g.dy));
         progress.setValue(Math.min(1, dist / PEEK_DRAG_RANGE));
       },
       onPanResponderRelease: (_, g) => {
+        if (!startedAtEdge.current) return;
+        startedAtEdge.current = false;
         const dist = Math.max(Math.abs(g.dx), Math.abs(g.dy));
         const ratio = Math.min(1, dist / PEEK_DRAG_RANGE);
         if (ratio >= PEEK_OPEN_THRESHOLD) {
@@ -360,6 +381,7 @@ function CardPeekOverlay({ visible, onOpened }: { visible: boolean; onOpened?: (
         }
       },
       onPanResponderTerminate: () => {
+        startedAtEdge.current = false;
         Animated.spring(progress, { toValue: 0, useNativeDriver: true, friction: 6 }).start();
       },
     }),
@@ -370,6 +392,9 @@ function CardPeekOverlay({ visible, onOpened }: { visible: boolean; onOpened?: (
   return (
     <Animated.View
       {...panResponder.panHandlers}
+      onLayout={(e) => {
+        dimsRef.current = { width: e.nativeEvent.layout.width, height: e.nativeEvent.layout.height };
+      }}
       style={[
         styles.peekOverlay,
         {
@@ -383,13 +408,13 @@ function CardPeekOverlay({ visible, onOpened }: { visible: boolean; onOpened?: (
       ]}
     >
       <View style={styles.peekCards}>
-        <PlayingCard hidden size="md" />
+        <PlayingCard hidden size="lg" />
         <View style={{ marginLeft: -6 }}>
-          <PlayingCard hidden size="md" />
+          <PlayingCard hidden size="lg" />
         </View>
       </View>
       <View style={styles.peekHint}>
-        <Text style={styles.peekHintText}>밀어서 확인</Text>
+        <Text style={styles.peekHintText}>모서리를 밀어서 확인</Text>
       </View>
     </Animated.View>
   );
