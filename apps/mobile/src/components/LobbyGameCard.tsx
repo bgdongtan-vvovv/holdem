@@ -1,93 +1,103 @@
 import React from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { brandTokens } from "../brand/tokens";
-import { koCopy } from "../brand/copy.ko";
-
-export type LobbyGameId = "ring" | "sit-and-go" | "mtt";
+import { LinearGradient } from "expo-linear-gradient";
+import { prime } from "./primeTheme";
 
 export type LobbyGame = {
-  id: LobbyGameId;
+  id: "ring" | "sit-and-go" | "mtt";
   title: string;
   subtitle: string;
   enabled: boolean;
 };
 
-const GLYPH: Record<LobbyGameId, string> = { ring: "♠", "sit-and-go": "♦", mtt: "♛" };
+const ART: Record<LobbyGame["id"], { colors: [string, string, string]; glyph: string; kicker: string }> = {
+  ring: { colors: ["#8e2129", "#4e0f15", "#1a0a0b"], glyph: "♠", kicker: "RING GAME" },
+  "sit-and-go": { colors: ["#1d4f3a", "#123326", "#0b1511"], glyph: "♣", kicker: "SIT & GO" },
+  mtt: { colors: ["#6b5220", "#3b2c10", "#140f07"], glyph: "♛", kicker: "TOURNAMENT" },
+};
 
-export function LobbyGameCard({ game, onPress }: { game: LobbyGame; onPress?: (game: LobbyGame) => void }) {
-  const disabled = !game.enabled;
+/**
+ * 로비 "추천" 카드 — 샘플 로비(KakaoTalk_20260902_160401081.jpg)의 For You 세로 카드 형식.
+ */
+export function LobbyGameCard({
+  game,
+  onPress,
+  footnote,
+}: {
+  game: LobbyGame;
+  onPress: (game: LobbyGame) => void;
+  footnote?: string;
+}) {
+  const art = ART[game.id];
   return (
     <Pressable
+      testID={`game-card-${game.id}`}
       accessibilityRole="button"
-      accessibilityState={{ disabled }}
-      accessibilityLabel={disabled ? `${game.title} ${koCopy.lobby.comingSoon}` : game.title}
-      disabled={disabled}
-      onPress={onPress ? () => onPress(game) : undefined}
-      style={({ pressed }) => [styles.card, disabled && styles.cardDisabled, pressed && !disabled && styles.cardPressed]}
+      accessibilityState={{ disabled: !game.enabled }}
+      onPress={() => onPress(game)}
+      style={[styles.card, !game.enabled && styles.cardDisabled]}
     >
-      <View style={[styles.glyphBox, disabled && styles.glyphBoxDisabled]}>
-        <Text style={[styles.glyph, disabled && styles.glyphDisabled]}>{GLYPH[game.id]}</Text>
-      </View>
-      <View style={styles.body}>
-        <Text style={[styles.title, disabled && styles.titleDisabled]} numberOfLines={1}>
-          {game.title}
-        </Text>
-        <Text style={styles.subtitle} numberOfLines={2}>
-          {disabled ? koCopy.lobby.comingSoonHint : game.subtitle}
-        </Text>
-      </View>
-      <View style={[styles.cta, disabled && styles.ctaDisabled]}>
-        <Text style={[styles.ctaTxt, disabled && styles.ctaTxtDisabled]}>
-          {disabled ? koCopy.lobby.comingSoon : koCopy.lobby.enter}
-        </Text>
-      </View>
+      <LinearGradient colors={art.colors} start={{ x: 0, y: 0 }} end={{ x: 0.6, y: 1 }} style={styles.fill}>
+        <Text style={styles.watermark}>{art.glyph}</Text>
+        <Text style={styles.kicker}>{art.kicker}</Text>
+        <Text style={styles.title} numberOfLines={1}>{game.title}</Text>
+        <Text style={styles.subtitle} numberOfLines={2}>{game.subtitle}</Text>
+        <View style={styles.bottom}>
+          {game.enabled ? (
+            <View style={styles.playPill}>
+              <Text style={styles.playPillText}>바로 참가 ›</Text>
+            </View>
+          ) : (
+            <View style={styles.soonPill}>
+              <Text style={styles.soonPillText}>준비 중</Text>
+            </View>
+          )}
+          {footnote ? <Text style={styles.footnote}>{footnote}</Text> : null}
+        </View>
+      </LinearGradient>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
   card: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 12,
-    padding: 14,
-    borderRadius: brandTokens.radius.sheet - 4,
-    backgroundColor: brandTokens.color.surfaceOverlay,
+    width: 128,
+    height: 166,
+    borderRadius: 10,
+    overflow: "hidden",
     borderWidth: 1,
-    borderColor: brandTokens.depth.panelBorder,
-    shadowColor: brandTokens.depth.panelShadow,
-    shadowOpacity: 0.6,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 4 },
+    borderColor: "rgba(217,178,106,0.35)",
   },
-  cardPressed: { backgroundColor: brandTokens.color.surfaceRaised },
-  cardDisabled: { opacity: 0.72, borderColor: "rgba(170,164,155,0.28)" },
-  glyphBox: {
-    width: 52,
-    height: 52,
-    borderRadius: brandTokens.radius.action,
-    alignItems: "center",
-    justifyContent: "center",
-    backgroundColor: brandTokens.color.felt,
+  cardDisabled: { opacity: 0.6 },
+  fill: { flex: 1, padding: 10 },
+  watermark: {
+    position: "absolute",
+    right: -8,
+    bottom: 18,
+    fontSize: 92,
+    color: "rgba(255,255,255,0.08)",
+  },
+  kicker: { color: prime.goldSoft, fontSize: 9, fontWeight: "800", letterSpacing: 1.2 },
+  title: { color: "#fff", fontSize: 17, fontWeight: "800", marginTop: 3 },
+  subtitle: { color: "rgba(255,255,255,0.7)", fontSize: 11, marginTop: 3, lineHeight: 14 },
+  bottom: { position: "absolute", left: 10, right: 10, bottom: 10, gap: 4 },
+  playPill: {
+    alignSelf: "flex-start",
+    backgroundColor: prime.gold,
+    borderRadius: 10,
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+  },
+  playPillText: { color: "#2a1d00", fontSize: 11, fontWeight: "800" },
+  soonPill: {
+    alignSelf: "flex-start",
+    borderRadius: 10,
+    paddingHorizontal: 9,
+    paddingVertical: 3,
+    backgroundColor: "rgba(0,0,0,0.45)",
     borderWidth: 1,
-    borderColor: brandTokens.color.gold,
+    borderColor: "rgba(255,255,255,0.2)",
   },
-  glyphBoxDisabled: { borderColor: brandTokens.color.textMuted },
-  glyph: { color: brandTokens.color.goldBright, fontSize: 26, fontWeight: "900" },
-  glyphDisabled: { color: brandTokens.color.textMuted },
-  body: { flex: 1, minWidth: 0 },
-  title: { color: brandTokens.color.text, fontSize: 17, fontWeight: "900" },
-  titleDisabled: { color: brandTokens.color.textMuted },
-  subtitle: { color: brandTokens.color.textMuted, fontSize: 12, marginTop: 3, fontWeight: "600" },
-  cta: {
-    paddingHorizontal: 14,
-    paddingVertical: 9,
-    borderRadius: brandTokens.radius.action,
-    backgroundColor: brandTokens.color.red,
-    borderWidth: 1,
-    borderColor: brandTokens.color.gold,
-  },
-  ctaDisabled: { backgroundColor: "transparent", borderColor: brandTokens.color.textMuted },
-  ctaTxt: { color: brandTokens.color.text, fontSize: 13, fontWeight: "900" },
-  ctaTxtDisabled: { color: brandTokens.color.textMuted },
+  soonPillText: { color: "#d5d5d5", fontSize: 11, fontWeight: "700" },
+  footnote: { color: "rgba(255,255,255,0.6)", fontSize: 10 },
 });

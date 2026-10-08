@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from "react";
 import { Animated, Easing, PanResponder, StyleSheet, Text, View } from "react-native";
 import type { PlayerState } from "@holdem/poker-engine";
 import type { Card } from "@holdem/poker-engine";
-import { theme } from "../theme";
+import { prime } from "./primeTheme";
 import { LinearGradient } from "expo-linear-gradient";
 import { Avatar } from "./Avatar";
 import { PlayingCard } from "./PlayingCard";
@@ -12,6 +12,16 @@ import { playSfx } from "../sound/sfx";
 
 /** 서버 타임뱅크(apps/server/src/table.ts TIMEBANK_MS)와 맞춘 시각적 카운트다운 길이. */
 const TURN_TIMER_MS = 20_000;
+
+export const SEAT_WIDTH = 112;
+const TAG_HEIGHT = 20;
+const AVATAR_SIZE = 58;
+const HERO_AVATAR_SIZE = 66;
+
+/** 좌석 컴포넌트 상단에서 아바타 중심까지의 거리 — PokerTable 이 앵커를 아바타 중심에 맞출 때 쓴다. */
+export function seatAvatarCenterY(isHuman: boolean): number {
+  return TAG_HEIGHT + (isHuman ? HERO_AVATAR_SIZE : AVATAR_SIZE) / 2;
+}
 
 export function TableSeat({
   player,
@@ -29,6 +39,7 @@ export function TableSeat({
   cardsOpened,
   onOpenCards,
   reaction,
+  inHand = false,
 }: {
   player: PlayerState;
   isHuman: boolean;
@@ -47,13 +58,18 @@ export function TableSeat({
   onOpenCards?: () => void;
   /** key 가 바뀔 때마다 새로 떠오르는 이모지 반응 말풍선. */
   reaction?: { emoji: string; key: number };
+  /** 핸드 진행 중 여부 — 카드 정보가 없는 상대에게 뒷면 카드를 그릴 때 쓴다. */
+  inHand?: boolean;
 }) {
   const folded = player.status === "folded";
   const out = player.status === "out";
+  const allIn = player.status === "allin";
   const showCards = isHuman || revealCards;
-  const hasCards = player.holeCards.length > 0 && !folded && !out;
+  const live = !folded && !out;
+  const hasCards = player.holeCards.length > 0 && live;
+  const showBacks = !isHuman && !hasCards && live && inHand;
   const needsOpen = isHuman && hasCards && cardsOpened === false;
-  const avatarSize = isHuman ? 88 : 72;
+  const avatarSize = isHuman ? HERO_AVATAR_SIZE : AVATAR_SIZE;
   const timerProgress = useRef(new Animated.Value(1)).current;
 
   useEffect(() => {
@@ -70,116 +86,156 @@ export function TableSeat({
       useNativeDriver: false,
     }).start();
   }, [isActive, timerProgress]);
-  const cardsOnLeft =
-    playerCount > 6
-      ? dealIndex === 5 || dealIndex === 6 || dealIndex === 7 || dealIndex === 8
-      : dealIndex === 3 || dealIndex === 4 || dealIndex === 5;
+
+  const cardSize = isHuman ? "md" : showCards ? "sm" : "sm";
 
   return (
-    <View style={[styles.wrap, folded && styles.folded]}>
-      {/* 승자 배지 */}
-      {isWinner && (
-        <AnimatedAppear style={styles.winBadge} translateY={-10} duration={520}>
-          <Text style={styles.winText}>WIN</Text>
-        </AnimatedAppear>
-      )}
+    <View style={[styles.wrap, (folded || out) && styles.folded]}>
+      <View style={styles.tagSlot}>
+        {player.committed > 0 && (
+          <LinearGradient colors={[prime.goldTagTop, prime.goldTagBottom]} style={styles.tag}>
+            <Text style={styles.tagText}>{formatGameMoney(player.committed)}</Text>
+          </LinearGradient>
+        )}
+      </View>
 
-      {/* 홀카드 */}
-      {hasCards && (
-        <View
-          style={[
-            styles.cards,
-            isHuman ? styles.cardsHuman : styles.cardsOther,
-            cardsOnLeft ? styles.cardsLeft : styles.cardsRight,
-            isHuman && styles.cardsHumanRight,
-          ]}
-        >
-          {player.holeCards.map((c, i) => (
-            <DealtCard
-              key={cardKey(c)}
-              delay={(i * playerCount + dealIndex) * 270}
-              from={dealOffset}
-              overlap={i === 0 ? 0 : isHuman ? -3 : -29}
-              settleY={!isHuman && i === 1 ? 3 : 0}
-              rotateTo={!isHuman ? (i === 0 ? "-5deg" : "4deg") : "0deg"}
-            >
-              <PlayingCard
-                card={c}
-                hidden={!showCards}
-                size={isHuman ? "md" : "sm"}
-                highlighted={showCards && matchedCards?.has(cardKey(c))}
-              />
-            </DealtCard>
-          ))}
-          {isHuman && cardsOpened !== undefined && (
-            <CardPeekOverlay visible={needsOpen} onOpened={onOpenCards} />
-          )}
-        </View>
-      )}
-
-      <View style={[styles.avatarLayer, isHuman && styles.avatarHumanShift]}>
+      <View style={[styles.avatarBox, { width: avatarSize, height: avatarSize }]}>
         {isWinner && <WinnerGlow />}
         <Avatar seat={player.seat} avatarIndex={avatarIndex} size={avatarSize} countryFlag={countryFlag} rank={rank} />
+
+        {hasCards && (
+          <View
+            style={[
+              styles.cards,
+              isHuman ? styles.cardsHuman : styles.cardsOther,
+            ]}
+          >
+            {player.holeCards.map((c, i) => (
+              <DealtCard
+                key={cardKey(c)}
+                delay={(i * playerCount + dealIndex) * 270}
+                from={dealOffset}
+                overlap={i === 0 ? 0 : isHuman ? -6 : -14}
+                settleY={!isHuman && i === 1 ? 1 : 0}
+                rotateTo={isHuman ? "0deg" : i === 0 ? "-7deg" : "7deg"}
+              >
+                <PlayingCard
+                  card={c}
+                  hidden={!showCards}
+                  size={cardSize}
+                  highlighted={showCards && matchedCards?.has(cardKey(c))}
+                />
+              </DealtCard>
+            ))}
+            {isHuman && cardsOpened !== undefined && (
+              <CardPeekOverlay visible={needsOpen} onOpened={onOpenCards} />
+            )}
+          </View>
+        )}
+
+        {showBacks && (
+          <View style={[styles.cards, styles.cardsOther]}>
+            {[0, 1].map((i) => (
+              <DealtCard
+                key={`back-${i}`}
+                delay={(i * playerCount + dealIndex) * 270}
+                from={dealOffset}
+                overlap={i === 0 ? 0 : -14}
+                settleY={i === 1 ? 1 : 0}
+                rotateTo={i === 0 ? "-7deg" : "7deg"}
+              >
+                <PlayingCard hidden size="sm" />
+              </DealtCard>
+            ))}
+          </View>
+        )}
+
+        {folded && (
+          <View style={styles.foldLabel}>
+            <Text style={styles.foldLabelText}>Fold</Text>
+          </View>
+        )}
+
+        {isWinner && (
+          <AnimatedAppear style={styles.winBadge} translateY={-8} duration={520}>
+            <Text style={styles.winText}>WIN</Text>
+          </AnimatedAppear>
+        )}
+
         {reaction && <ReactionBubble key={reaction.key} emoji={reaction.emoji} />}
       </View>
 
-      <LinearGradient colors={["#c5a66a", "#806039", "#48301b"]} style={[styles.plate, isActive && styles.plateActive, isWinner && styles.plateWin]}>
-        <Text style={styles.name} numberOfLines={1}>
+      <View style={[styles.plate, isActive && styles.plateActive, isWinner && styles.plateWin]}>
+        <Text style={[styles.name, isHuman && styles.nameHero]} numberOfLines={1}>
           {player.id}
         </Text>
-        <Text style={styles.stack}>{out ? "OUT" : formatGameMoney(player.stack)}</Text>
-        {isActive && (
-          <View style={styles.timerTrack}>
-            <Animated.View
-              style={[
-                styles.timerFill,
-                { width: timerProgress.interpolate({ inputRange: [0, 1], outputRange: ["0%", "100%"] }) },
-              ]}
-            />
-          </View>
-        )}
-      </LinearGradient>
+        <View style={styles.stackBand}>
+          <Text style={[styles.stack, allIn && styles.stackAllIn]} numberOfLines={1}>
+            {out ? "OUT" : allIn ? "All-In" : formatGameMoney(player.stack)}
+          </Text>
+        </View>
+      </View>
+      {isActive && (
+        <View style={styles.timerTrack}>
+          <Animated.View
+            style={[
+              styles.timerFill,
+              {
+                width: timerProgress.interpolate({ inputRange: [0, 1], outputRange: ["0%", "100%"] }),
+                backgroundColor: timerProgress.interpolate({
+                  inputRange: [0, 0.3, 1],
+                  outputRange: ["#e5482f", "#f0d23a", "#78d23c"],
+                }),
+              },
+            ]}
+          />
+        </View>
+      )}
     </View>
   );
 }
 
-const REACTION_LIFETIME_MS = 1800;
+const REACTION_LIFETIME_MS = 2400;
 
 /** 아바타 위로 떠오르는 이모지 반응 말풍선. 팝업 → 살짝 위로 떠오름 → 페이드아웃. */
 function ReactionBubble({ emoji }: { emoji: string }) {
-  const progress = useRef(new Animated.Value(0)).current;
+  const pop = useRef(new Animated.Value(0)).current;
+  const life = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    progress.setValue(0);
-    const anim = Animated.sequence([
-      Animated.spring(progress, { toValue: 1, useNativeDriver: true, friction: 5, tension: 120 }),
-      Animated.timing(progress, {
-        toValue: 2,
-        duration: REACTION_LIFETIME_MS - 260,
-        easing: Easing.out(Easing.cubic),
+    pop.setValue(0);
+    life.setValue(0);
+    // 통통 튀는 등장(강한 오버슈트 스프링) → 잠깐 머문 뒤 위로 떠오르며 사라짐.
+    const anim = Animated.parallel([
+      Animated.spring(pop, { toValue: 1, useNativeDriver: true, friction: 3.2, tension: 160 }),
+      Animated.timing(life, {
+        toValue: 1,
+        duration: REACTION_LIFETIME_MS,
+        easing: Easing.in(Easing.quad),
         useNativeDriver: true,
-        delay: 260,
       }),
     ]);
     anim.start();
     return () => anim.stop();
-  }, [progress]);
+  }, [pop, life]);
 
   return (
     <Animated.View
       style={[
         styles.reactionBubble,
         {
-          opacity: progress.interpolate({ inputRange: [0, 0.3, 1.5, 2], outputRange: [0, 1, 1, 0] }),
+          opacity: life.interpolate({ inputRange: [0, 0.05, 0.8, 1], outputRange: [0, 1, 1, 0] }),
           transform: [
-            { translateY: progress.interpolate({ inputRange: [0, 1, 2], outputRange: [8, -6, -26] }) },
-            { scale: progress.interpolate({ inputRange: [0, 0.6, 1, 2], outputRange: [0.4, 1.12, 1, 0.92] }) },
+            { translateY: life.interpolate({ inputRange: [0, 0.7, 1], outputRange: [0, -6, -34] }) },
+            { scale: pop.interpolate({ inputRange: [0, 1], outputRange: [0.2, 1] }) },
+            { rotate: pop.interpolate({ inputRange: [0, 0.6, 1], outputRange: ["-24deg", "10deg", "0deg"] }) },
           ],
         },
       ]}
       pointerEvents="none"
     >
       <Text style={styles.reactionBubbleText}>{emoji}</Text>
+      <View style={styles.reactionTail} />
     </Animated.View>
   );
 }
@@ -338,7 +394,7 @@ function CardPeekOverlay({ visible, onOpened }: { visible: boolean; onOpened?: (
     >
       <View style={styles.peekCards}>
         <PlayingCard hidden size="md" />
-        <View style={{ marginLeft: -3 }}>
+        <View style={{ marginLeft: -6 }}>
           <PlayingCard hidden size="md" />
         </View>
       </View>
@@ -410,44 +466,79 @@ function cardKey(card: Card): string {
 }
 
 const styles = StyleSheet.create({
-  wrap: { alignItems: "center", width: 112 },
-  folded: { opacity: 0.45 },
+  wrap: { alignItems: "center", width: SEAT_WIDTH },
+  folded: { opacity: 0.55 },
+  tagSlot: { height: TAG_HEIGHT, justifyContent: "flex-start", alignItems: "center" },
+  tag: {
+    minWidth: 54,
+    height: 17,
+    paddingHorizontal: 7,
+    borderRadius: 3,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: "#f7eccb",
+  },
+  tagText: { color: prime.goldTagText, fontWeight: "800", fontSize: 11.5 },
+  avatarBox: { zIndex: 6, alignItems: "center", justifyContent: "center", overflow: "visible" },
   winBadge: {
     position: "absolute",
-    top: -18,
-    zIndex: 5,
-    backgroundColor: theme.gold,
-    paddingHorizontal: 10,
-    paddingVertical: 2,
-    borderRadius: 10,
-    borderWidth: 1,
-    borderColor: "#fff7d6",
+    top: "28%",
+    alignSelf: "center",
+    zIndex: 16,
   },
-  winText: { color: "#1a1a1a", fontWeight: "900", fontSize: 12, letterSpacing: 1 },
-  avatarLayer: {
-    zIndex: 4,
-    alignItems: "center",
-    justifyContent: "center",
-    overflow: "visible",
+  winText: {
+    color: "#ffd56a",
+    fontWeight: "900",
+    fontSize: 24,
+    fontFamily: "Georgia",
+    letterSpacing: 1,
+    textShadowColor: "#5a2c00",
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 3,
   },
-  avatarHumanShift: {
-    transform: [{ translateX: -26 }],
+  foldLabel: {
+    position: "absolute",
+    top: "36%",
+    alignSelf: "center",
+    paddingHorizontal: 9,
+    paddingVertical: 1,
+    borderRadius: 4,
+    borderWidth: 1.5,
+    borderColor: "#e3343d",
+    backgroundColor: "rgba(20,4,6,0.85)",
+    zIndex: 15,
   },
+  foldLabelText: { color: "#ff5a62", fontWeight: "800", fontSize: 12 },
   reactionBubble: {
     position: "absolute",
-    top: -26,
-    alignSelf: "center",
-    zIndex: 14,
-    backgroundColor: "rgba(20,16,12,0.85)",
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: "rgba(215,168,61,0.6)",
-    width: 32,
-    height: 32,
+    top: -46,
+    right: -42,
+    zIndex: 30,
+    backgroundColor: "rgba(250,250,250,0.96)",
+    borderRadius: 34,
+    width: 68,
+    height: 68,
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 2.5,
+    borderColor: "#ffffff",
+    shadowColor: "#000",
+    shadowOpacity: 0.6,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 3 },
   },
-  reactionBubbleText: { fontSize: 17 },
+  reactionBubbleText: { fontSize: 42, lineHeight: 50 },
+  reactionTail: {
+    position: "absolute",
+    left: 6,
+    bottom: 2,
+    width: 14,
+    height: 14,
+    backgroundColor: "rgba(250,250,250,0.96)",
+    transform: [{ rotate: "45deg" }],
+    zIndex: -1,
+  },
   avatarGlow: {
     position: "absolute",
     left: -16,
@@ -460,81 +551,78 @@ const styles = StyleSheet.create({
   },
   avatarGlowCore: {
     position: "absolute",
-    width: 104,
-    height: 94,
-    borderRadius: 52,
-    backgroundColor: "rgba(255,202,74,0.2)",
-    shadowColor: theme.gold,
+    width: 96,
+    height: 90,
+    borderRadius: 48,
+    backgroundColor: "rgba(255,202,74,0.18)",
+    shadowColor: prime.gold,
     shadowOpacity: 0.95,
-    shadowRadius: 28,
+    shadowRadius: 24,
     shadowOffset: { width: 0, height: 0 },
   },
   avatarGlowRing: {
     position: "absolute",
-    width: 86,
-    height: 78,
-    borderRadius: 43,
+    width: 80,
+    height: 76,
+    borderRadius: 40,
     borderWidth: 2,
     borderColor: "rgba(255,219,112,0.5)",
-    shadowColor: theme.gold,
-    shadowOpacity: 0.85,
-    shadowRadius: 14,
-    shadowOffset: { width: 0, height: 0 },
   },
-  avatarGlowSpark: {
-    position: "absolute",
-    width: 108,
-    height: 98,
-  },
+  avatarGlowSpark: { position: "absolute", width: 100, height: 94 },
   avatarSpark: {
     position: "absolute",
     width: 5,
     height: 5,
     borderRadius: 3,
     backgroundColor: "#fff4b8",
-    shadowColor: theme.gold,
-    shadowOpacity: 1,
-    shadowRadius: 7,
-    shadowOffset: { width: 0, height: 0 },
   },
-  avatarSparkTop: { left: 52, top: 2 },
-  avatarSparkRight: { right: 3, top: 44 },
-  avatarSparkBottom: { left: 46, bottom: 0 },
-  avatarSparkLeft: { left: 3, top: 39 },
-  cards: { position: "absolute", flexDirection: "row", zIndex: 3, top: 0 },
-  cardsOther: { width: 47 },
-  cardsHuman: { top: -12, width: 118, zIndex: 12 },
-  cardsHumanRight: { left: 68 },
-  cardsRight: { left: 86 },
-  cardsLeft: { right: 86 },
+  avatarSparkTop: { left: 48, top: 2 },
+  avatarSparkRight: { right: 3, top: 42 },
+  avatarSparkBottom: { left: 44, bottom: 0 },
+  avatarSparkLeft: { left: 3, top: 37 },
+  cards: { position: "absolute", flexDirection: "row", zIndex: 6, alignSelf: "center" },
+  cardsOther: { top: "6%" },
+  cardsHuman: { top: -5 },
   plate: {
-    marginTop: -9,
-    minWidth: 98,
-    backgroundColor: theme.namePlate,
-    borderRadius: 22,
-    paddingHorizontal: 8,
-    paddingTop: 7,
-    paddingBottom: 4,
+    marginTop: -4,
+    width: 92,
+    backgroundColor: "rgba(22,22,24,0.94)",
+    borderRadius: 4,
+    borderWidth: 1,
+    borderColor: "#3b3b3e",
     alignItems: "center",
+    overflow: "hidden",
+    zIndex: 5,
+  },
+  plateActive: {
+    borderColor: "#f3f3f3",
     borderWidth: 1.5,
-    borderColor: "#d5b878",
+    shadowColor: "#fff",
+    shadowOpacity: 0.55,
+    shadowRadius: 6,
   },
-  plateActive: { borderColor: theme.namePlateActive, shadowColor: theme.gold, shadowOpacity: 0.9, shadowRadius: 8 },
-  plateWin: {
-    borderColor: "rgba(255,210,89,0.78)",
-    backgroundColor: "rgba(18,16,12,0.82)",
+  plateWin: { borderColor: prime.gold },
+  name: { color: "#f1f1f1", fontWeight: "600", fontSize: 12, paddingTop: 2, paddingHorizontal: 4, maxWidth: 90 },
+  nameHero: { color: prime.heroName, fontWeight: "700" },
+  stackBand: {
+    alignSelf: "stretch",
+    alignItems: "center",
+    backgroundColor: "rgba(0,0,0,0.35)",
+    borderTopWidth: 1,
+    borderTopColor: "rgba(255,255,255,0.06)",
+    paddingBottom: 1,
   },
-  name: { color: "#fff3d7", fontWeight: "800", fontSize: 11.5, minWidth: 92, textAlign: "center" },
-  stack: { color: "#ffe9a7", fontWeight: "900", fontSize: 14.5 },
+  stack: { color: prime.stackBlue, fontWeight: "700", fontSize: 13.5 },
+  stackAllIn: { color: "#ff4c4c" },
   timerTrack: {
-    marginTop: 3,
-    width: "100%",
-    height: 3,
+    marginTop: 2,
+    width: 88,
+    height: 4,
     borderRadius: 2,
-    backgroundColor: "rgba(255,255,255,0.15)",
+    backgroundColor: "rgba(0,0,0,0.6)",
     overflow: "hidden",
   },
-  timerFill: { height: "100%", backgroundColor: theme.success },
+  timerFill: { height: "100%" },
   peekOverlay: {
     position: "absolute",
     left: 0,
@@ -544,11 +632,12 @@ const styles = StyleSheet.create({
   },
   peekCards: { flexDirection: "row" },
   peekHint: {
-    marginTop: 2,
-    backgroundColor: "rgba(0,0,0,0.55)",
+    position: "absolute",
+    top: 28,
+    backgroundColor: "rgba(0,0,0,0.7)",
     borderRadius: 8,
     paddingHorizontal: 8,
     paddingVertical: 2,
   },
-  peekHintText: { color: theme.gold, fontWeight: "800", fontSize: 10 },
+  peekHintText: { color: prime.gold, fontWeight: "800", fontSize: 10 },
 });

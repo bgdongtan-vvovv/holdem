@@ -1,5 +1,6 @@
 import React from "react";
 import { Image, StyleSheet, Text, View } from "react-native";
+import { prime } from "./primeTheme";
 
 export const AVATARS = [
   require("../../assets/avatars/avatar_male_01_transparent.png"),
@@ -14,7 +15,8 @@ export const AVATARS = [
 ] as const;
 
 /**
- * 좌석별 3D 캐릭터 아바타.
+ * Prime Poker 스타일 원형 아바타: 회색 링 + 좌하단 레벨 뱃지(와인색 사각) + 우하단 국기.
+ * 뱃지/국기는 이름판 위로 살짝 걸치도록 원 밖으로 내려 배치한다.
  */
 export function Avatar({
   seat,
@@ -22,37 +24,67 @@ export function Avatar({
   size = 64,
   countryFlag,
   rank,
+  showBadges = true,
 }: {
   seat: number;
   avatarIndex?: number;
   size?: number;
   countryFlag?: string;
   rank?: number;
+  showBadges?: boolean;
 }) {
   const source = AVATARS[(avatarIndex ?? seat) % AVATARS.length];
+  const badge = Math.round(Math.max(16, size * 0.27));
   return (
-    <View
-      style={[
-        styles.wrap,
-        { width: size, height: size },
-      ]}
-    >
-      <View style={[styles.portrait, { borderRadius: size / 2 }]}><Image source={source} resizeMode="cover" style={styles.image} /></View>
-      {countryFlag ? <View style={styles.flag}><Text style={styles.flagText}>{countryFlag}</Text></View> : null}
-      <View accessibilityLabel={rank == null ? `좌석 ${seat + 1}` : `레벨 ${rank}`} style={styles.rank}><Text style={styles.rankText}>{rank ?? seat + 1}</Text></View>
+    <View style={{ width: size, height: size }}>
+      <View style={[styles.portrait, { borderRadius: size / 2 }]}>
+        <Image source={source} resizeMode="cover" style={styles.image} />
+      </View>
+      {showBadges && (
+        <>
+          <View
+            accessibilityLabel={rank == null ? `좌석 ${seat + 1}` : `레벨 ${rank}`}
+            style={[styles.level, { width: badge, height: badge, left: -badge * 0.35, bottom: -badge * 0.15 }]}
+          >
+            <Text style={[styles.levelText, { fontSize: badge * 0.58 }]}>{rank ?? seat + 1}</Text>
+          </View>
+          {countryFlag ? (
+            <View style={[styles.flag, { right: -badge * 0.4, bottom: -badge * 0.15, height: badge }]}>
+              <Text style={[styles.flagText, { fontSize: badge * 0.95, lineHeight: badge * 1.05 }]}>{countryFlag}</Text>
+            </View>
+          ) : null}
+        </>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  wrap: {
+  portrait: {
+    width: "100%",
+    height: "100%",
+    overflow: "hidden",
+    backgroundColor: "#2c2c2e",
+    borderWidth: 2,
+    borderColor: "#9b9b9f",
+  },
+  image: { width: "100%", height: "112%" },
+  level: {
+    position: "absolute",
+    borderRadius: 3,
+    backgroundColor: prime.levelBadge,
+    borderWidth: 1,
+    borderColor: prime.levelBadgeBorder,
     alignItems: "center",
     justifyContent: "center",
+    zIndex: 3,
   },
-  portrait: { width: "100%", height: "100%", overflow: "hidden", backgroundColor: "#332c26", borderWidth: 2, borderColor: "#c9b994", shadowColor: "#000", shadowOpacity: 0.7, shadowRadius: 5 },
-  image: { width: "100%", height: "115%" },
-  flag: { position: "absolute", left: -5, top: 1, backgroundColor: "#f5ead4", borderRadius: 3, paddingHorizontal: 2, borderWidth: 1, borderColor: "#a88a52" },
-  flagText: { fontSize: 17, lineHeight: 20 },
-  rank: { position: "absolute", right: -3, bottom: 4, width: 24, height: 24, borderRadius: 5, transform: [{ rotate: "45deg" }], backgroundColor: "#175780", borderWidth: 2, borderColor: "#87c9ec", shadowColor: "#000", shadowOpacity: 0.8, shadowRadius: 3, alignItems: "center", justifyContent: "center" },
-  rankText: { transform: [{ rotate: "-45deg" }], color: "#fff", fontWeight: "900", fontSize: 11 },
+  levelText: { color: "#fff", fontWeight: "800" },
+  flag: {
+    position: "absolute",
+    justifyContent: "center",
+    overflow: "hidden",
+    zIndex: 3,
+  },
+  flagText: {},
 });

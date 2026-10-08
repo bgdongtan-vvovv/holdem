@@ -1,82 +1,65 @@
 import React from "react";
-import { Image, StyleSheet, View } from "react-native";
+import { Image, StyleSheet, Text, View } from "react-native";
+import { feltSource, prime, type FeltId } from "./primeTheme";
 
-export type TableSurfaceProps = {
-  /** 테이블 배경 이미지. 기본은 Prime Poker 샘플 기반 버건디/우드 테이블. */
-  surfaceSource?: React.ComponentProps<typeof Image>["source"];
-  /** 조명 원 너비(%) */
-  lightWidth?: number;
-  /** 조명 원 높이(%) */
-  lightHeight?: number;
-  /** 조명 원 수직 이동(px) */
-  lightTranslateY?: number;
-  /** 테이블 영역 가장자리 그림자 세기 */
-  shadowOpacity?: number;
-  /** 테이블 코너 반경 */
-  borderRadius?: number;
-  /** 서피스 배율(해상도/화면비 보정용) */
-  scale?: number;
-  children?: React.ReactNode;
-};
-
+/**
+ * 풀블리드 테이블 배경(바 + 우드 레일 + 펠트) 위에 펠트 중앙 로고를 얹는다.
+ * 배경은 샘플(세로 화면) 구도를 따라 생성한 prime-table-*.jpg. 펠트 색은 메뉴에서 바꿀 수 있다.
+ */
 export function TableSurface({
-  surfaceSource,
-  lightWidth = 76,
-  lightHeight = 48,
-  lightTranslateY = -16,
-  shadowOpacity = 0.9,
-  borderRadius = 24,
-  scale = 1.02,
+  felt = "charcoal",
+  logoTop = "50%",
   children,
-}: TableSurfaceProps) {
+}: {
+  felt?: FeltId;
+  /** 로고 중심의 세로 위치(테이블 영역 대비). */
+  logoTop?: `${number}%`;
+  children?: React.ReactNode;
+}) {
   return (
-    <View style={styles.tableImage}>
-      <Image
-        source={surfaceSource ?? require("../../assets/images/prime-burgundy-table.png")}
-        resizeMode="stretch"
-        style={[styles.tableBackground, { borderRadius, shadowOpacity, transform: [{ scale }] }]}
-      />
-      <View
-        style={[
-          styles.tableLight,
-          {
-            width: `${lightWidth}%`,
-            height: `${lightHeight}%`,
-            transform: [{ translateY: lightTranslateY }],
-          },
-        ]}
-      >
-        {children}
+    <View style={styles.root} pointerEvents="box-none">
+      <Image source={feltSource(felt)} resizeMode="cover" style={styles.background} />
+      <View style={[styles.logo, { top: logoTop }]} pointerEvents="none">
+        <TableLogo />
       </View>
+      {children}
+    </View>
+  );
+}
+
+/** 펠트 위 브랜드 워터마크 — 샘플 중앙 로고(골드 2단 워드마크 + 가는 라인) 구성. */
+export function TableLogo({ scale = 1 }: { scale?: number }) {
+  return (
+    <View style={[styles.logoWrap, { transform: [{ scale }] }]}>
+      <View style={styles.logoRule} />
+      <Text style={styles.logoTop}>SSUN</Text>
+      <Text style={styles.logoBottom}>POKER</Text>
+      <View style={styles.logoRule} />
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  tableImage: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
-    alignItems: "center",
-    justifyContent: "center",
-    shadowColor: "#000",
-    shadowRadius: 24,
-    shadowOffset: { width: 0, height: 12 },
-    overflow: "hidden",
+  root: { ...StyleSheet.absoluteFillObject, overflow: "hidden", backgroundColor: "#140d09" },
+  background: { ...StyleSheet.absoluteFillObject, width: "100%", height: "100%" },
+  logo: { position: "absolute", left: 0, right: 0, alignItems: "center", marginTop: -38 },
+  logoWrap: { alignItems: "center", opacity: 0.5 },
+  logoRule: { width: 116, height: 1.5, backgroundColor: prime.logoGold, opacity: 0.8 },
+  logoTop: {
+    color: prime.logoGold,
+    fontSize: 31,
+    lineHeight: 35,
+    fontWeight: "900",
+    fontFamily: "Georgia",
+    letterSpacing: 3,
   },
-  tableBackground: {
-    position: "absolute",
-    left: 0,
-    right: 0,
-    top: 0,
-    bottom: 0,
-    width: "100%",
-    height: "100%",
-  },
-  tableLight: {
-    alignItems: "center",
-    justifyContent: "center",
+  logoBottom: {
+    color: prime.logoGold,
+    fontSize: 25,
+    lineHeight: 29,
+    fontWeight: "700",
+    fontFamily: "Georgia",
+    letterSpacing: 4,
+    marginBottom: 2,
   },
 });

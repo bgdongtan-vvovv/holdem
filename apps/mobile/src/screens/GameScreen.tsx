@@ -2,7 +2,8 @@ import React from "react";
 import { ActivityIndicator, Pressable, SafeAreaView, StyleSheet, Text, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
 import { HAND_CATEGORY_NAMES, type Action, type HandState, type LegalActions } from "@holdem/poker-engine";
-import { theme } from "../theme";
+import { prime, type FeltId } from "../components/primeTheme";
+import { GameMenuSheet, GameTopBar, RoundDockButton } from "../components/GameChrome";
 import { PokerTable, ShowdownBurst } from "../components/PokerTable";
 import { ActionBar } from "../components/ActionBar";
 import { useLocalTable, type SeatMeta, type TableOptions } from "../game/useLocalTable";
@@ -252,36 +253,16 @@ function TableView({
     };
   }, [shouldPlayShowdownEffect, state.result, wentToShowdown]);
 
+  const [felt, setFelt] = React.useState<FeltId>("charcoal");
+  const [menuOpen, setMenuOpen] = React.useState(false);
+  const hero = humanSeat >= 0 ? state.players[humanSeat] : undefined;
+  const heroCards = hero && humanCardsOpened && hero.holeCards.length > 0 ? hero.holeCards : null;
+  const stakesLabel = `NL Hold'em · ${formatGameMoney(stakes.smallBlind)} / ${formatGameMoney(stakes.bigBlind)}`;
+
   return (
     <SafeAreaView style={styles.root}>
       <StatusBar hidden style="light" />
       <View style={styles.gameShell} onTouchStart={unlockAudioOnce}>
-        <View style={styles.topbar}>
-          <View style={styles.topLeft}>
-            <Pressable style={styles.iconBtn} onPress={onExit}>
-              <Text style={styles.iconTxt}>⎋</Text>
-            </Pressable>
-            <Pressable style={styles.iconBtnSm} onPress={() => playSfx("ui_click")}>
-              <Text style={styles.iconTxtSm}>🂠</Text>
-            </Pressable>
-            <View style={styles.network}>
-              <Text style={styles.wifi}>◉</Text>
-              <Text style={styles.ping}>66ms</Text>
-            </View>
-          </View>
-          <View style={styles.topRight}>
-            <Text style={styles.stakeBadge}>
-              {formatGameMoney(stakes.smallBlind)} / {formatGameMoney(stakes.bigBlind)}
-            </Text>
-            <View style={styles.moveBtn}>
-              <Text style={styles.moveTxt}>테이블 이동</Text>
-            </View>
-            <Pressable style={styles.iconBtnSm} onPress={() => playSfx("ui_click")}>
-              <Text style={styles.iconTxtSm}>⋮</Text>
-            </Pressable>
-          </View>
-        </View>
-
         <PokerTable
           state={state}
           seatsMeta={seatsMeta}
@@ -293,50 +274,62 @@ function TableView({
           humanCardsOpened={humanCardsOpened}
           onOpenHumanCards={openHumanCards}
           reactions={reactions}
+          felt={felt}
         />
+
+        <GameTopBar heroCards={heroCards} onOpenMenu={() => setMenuOpen(true)} />
 
         {showdownEffectActive && <ShowdownBurst key={showdownEffectKey} />}
 
         {statusOverlay ? (
           <View style={styles.statusOverlay}>
-            <ActivityIndicator color={theme.gold} />
+            <ActivityIndicator color={prime.gold} />
             <Text style={styles.statusOverlayTxt}>{statusOverlay}</Text>
           </View>
         ) : null}
 
-        {humanSeat >= 0 && (
-          <View style={styles.reactionDock}>
-            {reactionPickerOpen && (
-              <View style={styles.reactionPicker}>
-                {QUICK_REACTION_EMOJIS.map((emoji) => (
-                  <Pressable
-                    key={emoji}
-                    style={styles.reactionPickerItem}
-                    onPress={() => {
-                      sendReaction(humanSeat, emoji);
-                      setReactionPickerOpen(false);
-                      void unlockSfx("ui_click");
-                      playSfx("ui_click");
-                    }}
-                  >
-                    <Text style={styles.reactionPickerEmoji}>{emoji}</Text>
-                  </Pressable>
-                ))}
-              </View>
+        <View style={styles.dock} pointerEvents="box-none">
+          {reactionPickerOpen && humanSeat >= 0 && (
+            <View style={styles.reactionPicker}>
+              {QUICK_REACTION_EMOJIS.map((emoji) => (
+                <Pressable
+                  key={emoji}
+                  style={styles.reactionPickerItem}
+                  onPress={() => {
+                    sendReaction(humanSeat, emoji);
+                    setReactionPickerOpen(false);
+                    void unlockSfx("ui_click");
+                    playSfx("ui_click");
+                  }}
+                >
+                  <Text style={styles.reactionPickerEmoji}>{emoji}</Text>
+                </Pressable>
+              ))}
+            </View>
+          )}
+          <View style={styles.dockRow}>
+            {humanSeat >= 0 && (
+              <RoundDockButton
+                glyph="☺"
+                label="이모지 반응"
+                onPress={() => {
+                  setReactionPickerOpen((v) => !v);
+                  playSfx("ui_click");
+                }}
+              />
             )}
-            <Pressable
-              style={styles.reactionToggle}
+            <RoundDockButton
+              glyph="⌃"
+              label="옵션 메뉴"
               onPress={() => {
-                setReactionPickerOpen((v) => !v);
+                setMenuOpen(true);
                 playSfx("ui_click");
               }}
-            >
-              <Text style={styles.reactionToggleTxt}>💬</Text>
-            </Pressable>
+            />
           </View>
-        )}
+        </View>
 
-        <View style={styles.footer}>
+        <View style={styles.footer} pointerEvents="box-none">
           {handOver ? (
             <ResultPanel state={state} onNext={nextHand} />
           ) : (
@@ -348,6 +341,19 @@ function TableView({
             />
           )}
         </View>
+
+        {menuOpen && (
+          <GameMenuSheet
+            felt={felt}
+            onChangeFelt={setFelt}
+            onExit={() => {
+              setMenuOpen(false);
+              onExit();
+            }}
+            onClose={() => setMenuOpen(false)}
+            stakesLabel={stakesLabel}
+          />
+        )}
       </View>
     </SafeAreaView>
   );
@@ -373,136 +379,94 @@ function ResultPanel({
 
   return (
     <View style={styles.resultWrap}>
-      <Text style={styles.resultText}>{summary || "핸드 종료"}</Text>
-      <Pressable style={styles.nextBtn} onPress={onNext}>
-        <Text style={styles.nextText}>다음 핸드 ▶</Text>
+      <View style={styles.resultInfo}>
+        <Text style={styles.resultTitle}>Hand Result</Text>
+        <Text style={styles.resultText} numberOfLines={2}>{summary || "핸드 종료"}</Text>
+      </View>
+      <Pressable testID="next-hand" style={styles.nextBtn} onPress={onNext}>
+        <Text style={styles.nextText}>Next Hand</Text>
       </Pressable>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#02050b", alignItems: "center" },
+  root: { flex: 1, backgroundColor: "#000", alignItems: "center" },
   gameShell: {
     position: "relative",
     flex: 1,
     width: "100%",
     maxWidth: 480,
-    backgroundColor: theme.bg,
+    backgroundColor: "#140d09",
     overflow: "hidden",
   },
-  topbar: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    zIndex: 20,
-    elevation: 20,
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 14,
-    paddingTop: 10,
-    paddingBottom: 6,
-    backgroundColor: "transparent",
-  },
-  topLeft: { flexDirection: "row", alignItems: "center", gap: 13 },
-  iconBtn: {
-    width: 52, height: 52, borderRadius: 26, backgroundColor: "#353636",
-    alignItems: "center", justifyContent: "center", borderWidth: 2, borderColor: "#77705c",
-    shadowColor: "#000", shadowOpacity: 0.8, shadowRadius: 5,
-  },
-  iconTxt: { color: theme.text, fontSize: 25, fontWeight: "900" },
-  iconBtnSm: {
-    width: 38, height: 38, borderRadius: 19, backgroundColor: "#353636",
-    alignItems: "center", justifyContent: "center", borderWidth: 1.5, borderColor: "#77705c",
-  },
-  iconTxtSm: { color: theme.text, fontSize: 18, fontWeight: "900" },
-  network: { alignItems: "center", justifyContent: "center" },
-  wifi: { color: "#2ef28a", fontWeight: "900", fontSize: 25, lineHeight: 25 },
-  ping: { color: "#fff", fontWeight: "800", fontSize: 13 },
-  topRight: {
-    alignItems: "center", gap: 5, backgroundColor: "rgba(52,50,52,0.78)",
-    padding: 7, borderRadius: 10,
-  },
-  stakeBadge: { color: "#e3dfdc", fontWeight: "900", fontSize: 13 },
-  moveBtn: {
-    backgroundColor: "#363632", paddingHorizontal: 13, paddingVertical: 7,
-    borderRadius: 5, borderWidth: 1.5, borderColor: "#7c7561",
-  },
-  moveTxt: { color: "#ecd58d", fontWeight: "900", fontSize: 14 },
   footer: {
     position: "absolute",
     left: 0,
     right: 0,
     bottom: 0,
-    height: 128,
     zIndex: 18,
     elevation: 18,
-    justifyContent: "center", backgroundColor: "rgba(10,11,14,0.96)",
-    borderTopWidth: 2, borderTopColor: "#363535",
-    overflow: "hidden",
   },
-  waiting: { color: theme.textMuted, textAlign: "center", fontStyle: "italic", paddingVertical: 24 },
   statusOverlay: {
     position: "absolute",
-    top: "42%",
+    top: "40%",
     left: 0,
     right: 0,
     alignItems: "center",
     gap: 8,
+    paddingVertical: 18,
+    backgroundColor: "rgba(12,12,12,0.72)",
     zIndex: 19,
     elevation: 19,
   },
-  statusOverlayTxt: {
-    color: theme.text,
-    fontSize: 13,
-    fontWeight: "800",
-    backgroundColor: "rgba(0,0,0,0.55)",
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 10,
-  },
-  reactionDock: {
+  statusOverlayTxt: { color: "#f2f2f2", fontSize: 14, fontWeight: "600" },
+  dock: {
     position: "absolute",
-    right: 14,
-    bottom: 138,
+    left: 0,
+    right: 0,
+    bottom: 74,
     zIndex: 17,
     elevation: 17,
-    alignItems: "flex-end",
+    alignItems: "center",
     gap: 8,
   },
-  reactionToggle: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: "rgba(20,16,12,0.78)",
-    borderWidth: 1.5,
-    borderColor: "rgba(215,168,61,0.5)",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  reactionToggleTxt: { fontSize: 20 },
+  dockRow: { flexDirection: "row", gap: 12 },
   reactionPicker: {
     flexDirection: "row",
-    backgroundColor: "rgba(20,16,12,0.9)",
-    borderRadius: 24,
-    borderWidth: 1.5,
-    borderColor: "rgba(215,168,61,0.5)",
+    backgroundColor: "rgba(18,18,20,0.95)",
+    borderRadius: 34,
+    borderWidth: 1,
+    borderColor: prime.panelBorder,
     paddingHorizontal: 6,
     paddingVertical: 6,
     gap: 2,
   },
-  reactionPickerItem: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+  reactionPickerItem: { width: 54, height: 54, borderRadius: 27, alignItems: "center", justifyContent: "center" },
+  reactionPickerEmoji: { fontSize: 36, lineHeight: 44 },
+  resultWrap: {
+    flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
+    gap: 8,
+    marginHorizontal: 8,
+    marginBottom: 10,
+    padding: 8,
+    borderRadius: 10,
+    backgroundColor: "rgba(20,20,22,0.95)",
+    borderWidth: 1,
+    borderColor: prime.panelBorder,
   },
-  reactionPickerEmoji: { fontSize: 20 },
-  resultWrap: { alignItems: "center", padding: 16, gap: 12 },
-  resultText: { color: theme.text, fontSize: 15, fontWeight: "700", textAlign: "center" },
-  nextBtn: { backgroundColor: theme.gold, paddingHorizontal: 28, paddingVertical: 14, borderRadius: 12 },
-  nextText: { color: "#1a1a1a", fontWeight: "900", fontSize: 16 },
+  resultInfo: { flex: 1, paddingLeft: 4 },
+  resultTitle: { color: prime.textDim, fontSize: 11, fontWeight: "600" },
+  resultText: { color: prime.gold, fontSize: 14, fontWeight: "700" },
+  nextBtn: {
+    backgroundColor: prime.red,
+    paddingHorizontal: 22,
+    height: 44,
+    justifyContent: "center",
+    borderRadius: 22,
+    borderWidth: 1,
+    borderColor: prime.redGlow,
+  },
+  nextText: { color: "#fff", fontWeight: "800", fontSize: 15 },
 });

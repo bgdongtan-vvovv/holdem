@@ -1,8 +1,13 @@
 import React, { useState } from "react";
-import { ImageBackground, Pressable, SafeAreaView, StyleSheet, Text, TextInput, View } from "react-native";
+import { Image, Pressable, SafeAreaView, StyleSheet, Text, TextInput, View } from "react-native";
 import { StatusBar } from "expo-status-bar";
-import { theme } from "../theme";
+import { LinearGradient } from "expo-linear-gradient";
+import { prime } from "../components/primeTheme";
 
+/**
+ * 로그인 — 샘플 스플래시(골드 컨페티 + 어두운 아레나, KakaoTalk_20260902_155622655.jpg) 위에
+ * 골드 워드마크, 하단엔 샘플 바텀시트(KakaoTalk_20260902_173449706_09/10.jpg) 톤의 로그인 패널.
+ */
 export function LoginScreen({ onLogin }: { onLogin: (playerId: string) => void }) {
   const [id, setId] = useState("david3323");
   const [pw, setPw] = useState("password");
@@ -14,93 +19,107 @@ export function LoginScreen({ onLogin }: { onLogin: (playerId: string) => void }
   return (
     <SafeAreaView style={styles.root}>
       <StatusBar hidden style="light" />
-      <ImageBackground
-        source={require("../../assets/images/casino-lobby-bg.png")}
-        resizeMode="cover"
-        style={StyleSheet.absoluteFill}
-      />
-      <View style={styles.backdropShade} />
-      <View style={styles.header}>
-        <Text style={styles.brandTop}>
-          <Text style={{ color: theme.gold }}>♠ HOLDEM</Text>
-        </Text>
-        <View style={styles.headerRight}>
-          <Text style={styles.headerLink}>로그인</Text>
-          <View style={styles.signupBtn}>
-            <Text style={styles.signupTxt}>회원가입</Text>
-          </View>
+      <View style={styles.shell}>
+        <Image
+          source={require("../../assets/images/prime-login-splash.jpg")}
+          resizeMode="cover"
+          style={styles.splash}
+        />
+        <LinearGradient
+          colors={["rgba(0,0,0,0.15)", "rgba(0,0,0,0)", "rgba(0,0,0,0.55)", "rgba(0,0,0,0.92)"]}
+          locations={[0, 0.3, 0.55, 0.75]}
+          style={StyleSheet.absoluteFill}
+        />
+
+        <View style={styles.brand}>
+          <View style={styles.brandRule} />
+          <Text style={styles.brandTop}>SSUN</Text>
+          <Text style={styles.brandBottom}>POKER</Text>
+          <View style={styles.brandRule} />
+          <Text style={styles.brandTag}>TEXAS HOLD'EM · REAL TABLE</Text>
         </View>
-      </View>
 
-      <View style={styles.center}>
-        <View style={styles.card}>
-          <View style={styles.logo}>
-            <Text style={styles.logoMonogram}>H</Text>
-            <Text style={styles.logoSuit}>♠</Text>
-          </View>
-          <Text style={styles.title}>HOLDEM CLUB 로그인</Text>
+        <View style={styles.sheet}>
+          <View style={styles.grabber} />
+          <Text style={styles.sheetTitle}>로그인</Text>
+          <Text style={styles.sheetSub}>계정으로 테이블에 입장하세요</Text>
 
-          <View style={styles.field}>
-            <Text style={styles.label}>아이디</Text>
-            <TextInput
-              style={styles.input}
-              value={id}
-              onChangeText={setId}
-              placeholder="아이디"
-              placeholderTextColor={theme.textMuted}
-              autoCapitalize="none"
-            />
-          </View>
-          <View style={styles.field}>
-            <Text style={styles.label}>비밀번호</Text>
-            <TextInput
-              style={styles.input}
-              value={pw}
-              onChangeText={setPw}
-              placeholder="비밀번호"
-              placeholderTextColor={theme.textMuted}
-              secureTextEntry
-            />
+          <View style={styles.fieldBox}>
+            <Row label="아이디">
+              <TextInput
+                style={styles.input}
+                value={id}
+                onChangeText={setId}
+                placeholder="아이디"
+                placeholderTextColor={prime.textMuted}
+                autoCapitalize="none"
+              />
+            </Row>
+            <View style={styles.fieldDivider} />
+            <Row label="비밀번호">
+              <TextInput
+                style={styles.input}
+                value={pw}
+                onChangeText={setPw}
+                placeholder="비밀번호"
+                placeholderTextColor={prime.textMuted}
+                secureTextEntry
+              />
+            </Row>
           </View>
 
-          <Pressable style={styles.loginBtn} onPress={handleLogin}>
-            <Text style={styles.loginTxt}>로그인</Text>
+          <Pressable testID="login-submit" style={styles.cta} onPress={handleLogin}>
+            <LinearGradient colors={["#c8323b", prime.red, prime.redDeep]} style={styles.ctaFill}>
+              <Text style={styles.ctaText}>로그인</Text>
+            </LinearGradient>
           </Pressable>
 
           <View style={styles.orRow}>
             <View style={styles.orLine} />
-            <Text style={styles.orTxt}>OR</Text>
+            <Text style={styles.orTxt}>또는</Text>
             <View style={styles.orLine} />
           </View>
 
-          <SocialButton label="Facebook으로 로그인" glyph="f" bg="#fff" color="#1877f2" onPress={handleLogin} />
-          <SocialButton label="Apple으로 로그인" glyph="" bg="#fff" color="#000" onPress={handleLogin} />
-          <SocialButton label="Google으로 로그인" glyph="G" bg="#fff" color="#4285F4" onPress={handleLogin} />
+          <View style={styles.socialRow}>
+            <SocialTile glyph="G" color="#e8e8e8" label="Google" onPress={handleLogin} />
+            <SocialTile glyph="" color="#e8e8e8" label="Apple" onPress={handleLogin} />
+            <SocialTile glyph="f" color="#5b8dff" label="Facebook" onPress={handleLogin} />
+          </View>
 
-          <Text style={styles.footerLinks}>비밀번호 찾기 | 회원가입하기</Text>
-          <Text style={styles.version}>2026.06.26.1</Text>
+          <View style={styles.footerRow}>
+            <Text style={styles.footerLink}>비밀번호 찾기</Text>
+            <Text style={styles.footerDot}>·</Text>
+            <Text style={styles.footerLink}>회원가입</Text>
+          </View>
+          <Text style={styles.version}>v2026.10 · 19+ 게임 이용 등급</Text>
         </View>
-        <Text style={styles.tagline}>PLAY BOLD · PLAY SMART</Text>
       </View>
     </SafeAreaView>
   );
 }
 
-function SocialButton({
-  label,
+function Row({ label, children }: { label: string; children: React.ReactNode }) {
+  return (
+    <View style={styles.field}>
+      <Text style={styles.label}>{label}</Text>
+      {children}
+    </View>
+  );
+}
+
+function SocialTile({
   glyph,
-  bg,
   color,
+  label,
   onPress,
 }: {
-  label: string;
   glyph: string;
-  bg: string;
   color: string;
+  label: string;
   onPress: () => void;
 }) {
   return (
-    <Pressable style={[styles.social, { backgroundColor: bg }]} onPress={onPress}>
+    <Pressable accessibilityLabel={`${label}로 로그인`} style={styles.social} onPress={onPress}>
       <Text style={[styles.socialGlyph, { color }]}>{glyph}</Text>
       <Text style={styles.socialTxt}>{label}</Text>
     </Pressable>
@@ -108,75 +127,93 @@ function SocialButton({
 }
 
 const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: "#050505" },
-  backdropShade: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: "rgba(0,0,0,0.38)",
-  },
-  header: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-  },
-  brandTop: { fontSize: 18, fontWeight: "900", letterSpacing: 1 },
-  headerRight: { flexDirection: "row", alignItems: "center", gap: 12 },
-  headerLink: { color: theme.text, fontWeight: "700", fontSize: 13 },
-  signupBtn: { borderWidth: 1, borderColor: theme.railHi, borderRadius: 8, paddingHorizontal: 12, paddingVertical: 6 },
-  signupTxt: { color: theme.text, fontWeight: "700", fontSize: 13 },
+  root: { flex: 1, backgroundColor: "#000", alignItems: "center" },
+  shell: { flex: 1, width: "100%", maxWidth: 480, overflow: "hidden", backgroundColor: prime.bg },
 
-  center: { flex: 1, alignItems: "center", justifyContent: "center", paddingHorizontal: 20 },
-  card: {
-    width: "100%",
-    maxWidth: 360,
-    backgroundColor: "rgba(24,23,23,0.95)",
-    borderRadius: 10,
-    padding: 24,
+  // 스플래시의 테이블·칩 부분이 로그인 시트 위로 보이도록 이미지를 위로 끌어올린다.
+  splash: { position: "absolute", left: 0, right: 0, top: "-24%", height: "100%" },
+  brand: { alignItems: "center", marginTop: "12%" },
+  brandRule: { width: 168, height: 2, backgroundColor: prime.goldSoft },
+  brandTop: {
+    color: "#f1d48a",
+    fontSize: 52,
+    lineHeight: 58,
+    fontWeight: "900",
+    fontFamily: "Georgia",
+    letterSpacing: 5,
+    textShadowColor: "rgba(0,0,0,0.85)",
+    textShadowOffset: { width: 0, height: 3 },
+    textShadowRadius: 8,
+  },
+  brandBottom: {
+    color: "#d9b26a",
+    fontSize: 38,
+    lineHeight: 42,
+    fontWeight: "700",
+    fontFamily: "Georgia",
+    letterSpacing: 7,
+    marginBottom: 4,
+    textShadowColor: "rgba(0,0,0,0.85)",
+    textShadowOffset: { width: 0, height: 2 },
+    textShadowRadius: 6,
+  },
+  brandTag: { marginTop: 10, color: "rgba(255,240,205,0.82)", fontSize: 11, fontWeight: "700", letterSpacing: 3 },
+
+  sheet: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(20,20,21,0.97)",
+    borderTopLeftRadius: 18,
+    borderTopRightRadius: 18,
+    borderTopWidth: 1,
+    borderColor: "rgba(217,178,106,0.35)",
+    paddingHorizontal: 18,
+    paddingTop: 8,
+    paddingBottom: 18,
+  },
+  grabber: { alignSelf: "center", width: 40, height: 4, borderRadius: 2, backgroundColor: "#48484b", marginBottom: 12 },
+  sheetTitle: { color: "#f4f4f4", fontSize: 20, fontWeight: "700", textAlign: "center" },
+  sheetSub: { color: prime.textDim, fontSize: 12, textAlign: "center", marginTop: 3, marginBottom: 14 },
+
+  fieldBox: { backgroundColor: prime.panelHi, borderRadius: 8, paddingHorizontal: 12 },
+  field: { flexDirection: "row", alignItems: "center", height: 46 },
+  fieldDivider: { height: 1, backgroundColor: prime.hairline },
+  label: { color: "#cfcfd3", width: 68, fontSize: 14 },
+  input: { flex: 1, color: "#f4f4f4", fontSize: 15, paddingVertical: 10 },
+
+  cta: { marginTop: 14, borderRadius: 26, overflow: "hidden" },
+  ctaFill: {
+    height: 50,
+    borderRadius: 26,
     alignItems: "center",
+    justifyContent: "center",
     borderWidth: 1,
-    borderColor: "rgba(217,174,76,0.32)",
-    shadowColor: "#000", shadowOpacity: 0.85, shadowRadius: 24,
-    shadowOffset: { width: 0, height: 12 },
+    borderColor: "rgba(255,120,120,0.35)",
   },
-  logo: {
-    width: 58, height: 62, borderRadius: 8, backgroundColor: "#161616",
-    alignItems: "center", justifyContent: "center", borderWidth: 2,
-    borderColor: theme.goldDeep, marginBottom: 12,
-    transform: [{ rotate: "-5deg" }],
-    shadowColor: theme.gold, shadowOpacity: 0.45, shadowRadius: 10,
-  },
-  logoMonogram: { color: theme.gold, fontSize: 28, fontFamily: "serif", fontWeight: "900" },
-  logoSuit: { color: "#f4e4b5", fontSize: 14, marginTop: -8 },
-  title: { color: "#d7d0c1", fontSize: 18, fontWeight: "800", marginBottom: 20 },
-  field: { width: "100%", flexDirection: "row", alignItems: "center", marginBottom: 12 },
-  label: { color: theme.textMuted, width: 70, fontSize: 14, fontWeight: "600" },
-  input: {
-    flex: 1, backgroundColor: "#383838", borderRadius: 7, paddingHorizontal: 12, paddingVertical: 12,
-    color: theme.text, fontSize: 14,
-    borderWidth: 1, borderColor: "rgba(255,255,255,0.05)",
-  },
-  loginBtn: {
-    width: "100%", backgroundColor: "#7c5cff", borderRadius: 8, paddingVertical: 14,
-    alignItems: "center", marginTop: 8,
-  },
-  loginTxt: { color: "#fff", fontWeight: "800", fontSize: 15 },
-  orRow: { flexDirection: "row", alignItems: "center", width: "100%", marginVertical: 16, gap: 10 },
-  orLine: { flex: 1, height: 1, backgroundColor: "rgba(255,255,255,0.12)" },
-  orTxt: { color: theme.textMuted, fontWeight: "700", fontSize: 12 },
+  ctaText: { color: "#fff", fontSize: 17, fontWeight: "700" },
+
+  orRow: { flexDirection: "row", alignItems: "center", marginVertical: 12, gap: 10 },
+  orLine: { flex: 1, height: 1, backgroundColor: prime.hairline },
+  orTxt: { color: prime.textMuted, fontSize: 12 },
+
+  socialRow: { flexDirection: "row", gap: 8 },
   social: {
-    width: "100%", flexDirection: "row", alignItems: "center", justifyContent: "center",
-    borderRadius: 8, paddingVertical: 12, marginBottom: 10, gap: 8,
+    flex: 1,
+    height: 44,
+    borderRadius: 8,
+    backgroundColor: "#3a3a3d",
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 6,
   },
-  socialGlyph: { fontSize: 16, fontWeight: "900", width: 18, textAlign: "center" },
-  socialTxt: { color: "#1a1a1a", fontWeight: "800", fontSize: 14 },
-  footerLinks: { color: theme.textMuted, fontSize: 13, marginTop: 10 },
-  version: {
-    color: theme.textMuted, fontSize: 11, marginTop: 12,
-    borderWidth: 1, borderColor: theme.railHi, borderRadius: 6, paddingHorizontal: 8, paddingVertical: 2,
-  },
-  tagline: {
-    color: "#d8b85d", fontSize: 19, fontWeight: "900", marginTop: 20,
-    letterSpacing: 1.5, textShadowColor: "#000", textShadowRadius: 8,
-  },
+  socialGlyph: { fontSize: 16, fontWeight: "900" },
+  socialTxt: { color: "#ececec", fontSize: 13, fontWeight: "600" },
+
+  footerRow: { flexDirection: "row", justifyContent: "center", gap: 8, marginTop: 14 },
+  footerLink: { color: "#cfcfd3", fontSize: 12, textDecorationLine: "underline" },
+  footerDot: { color: prime.textMuted, fontSize: 12 },
+  version: { color: prime.textMuted, fontSize: 10, textAlign: "center", marginTop: 8 },
 });

@@ -1,50 +1,19 @@
-import React, { useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { Pressable, StyleSheet, Text, View } from "react-native";
-import { LinearGradient } from "expo-linear-gradient";
 import type { Action, HandState, LegalActions } from "@holdem/poker-engine";
 import { totalPot } from "@holdem/poker-engine";
-import { theme } from "../theme";
 import { formatGameMoney } from "../formatMoney";
 import { playSfx } from "../sound/sfx";
+import { prime } from "./primeTheme";
 
-function GradientButton({
-  colors,
-  textColor = "#fff",
-  label,
-  subLabel,
-  onPress,
-  disabled = false,
-}: {
-  colors: readonly [string, string];
-  textColor?: string;
-  label: string;
-  subLabel?: string;
-  onPress: () => void;
-  disabled?: boolean;
-}) {
-  return (
-    <Pressable
-      disabled={disabled}
-      style={[styles.btnWrap, disabled && styles.disabled]}
-      onPress={() => {
-        playSfx("ui_click");
-        onPress();
-      }}
-    >
-      <LinearGradient colors={colors} start={{ x: 0, y: 0 }} end={{ x: 0, y: 1 }} style={styles.btn}>
-        <Text style={[styles.btnText, { color: textColor }]}>{label}</Text>
-        {subLabel && <Text style={[styles.btnSubText, { color: textColor }]}>{subLabel}</Text>}
-      </LinearGradient>
-    </Pressable>
-  );
-}
+type Preset = { tag: string; to: number };
+type PreAction = "checkFold" | "call" | null;
 
-const GRAD = {
-  fold: ["#a94945", "#60201f"] as const,
-  call: ["#c85850", "#852b2b"] as const,
-  raise: ["#e26959", "#a53030"] as const,
-};
-
+/**
+ * Prime Poker 세로 액션 영역.
+ * - 내 차례: 하단 [Fold][Call/Check][최소 레이즈] + 우측에 쌓인 레이즈 프리셋(3BB/4BB/Pot…). 프리셋은 한 번 탭으로 바로 레이즈.
+ * - 남의 차례: 샘플의 체크박스형 선행 액션([✓ Check/Fold] [Call N]). 내 차례가 오면 선택한 액션을 한 번 실행한다.
+ */
 export function ActionBar({
   state,
   legal,
@@ -56,123 +25,236 @@ export function ActionBar({
   onAction: (a: Action) => void;
   disabled?: boolean;
 }) {
-  const [raiseTo, setRaiseTo] = useState<number>(legal.minRaiseTo);
+  const [preAction, setPreAction] = useState<PreAction>(null);
+  const hero = state.players[legal.seat];
+  const owed = Math.max(0, state.currentBet - (hero?.committed ?? 0));
+  const preCallAmount = useRef(owed);
 
-  // legal 이 바뀌면 raiseTo 를 최소값으로 리셋
-  const key = `${state.actingIndex}-${state.currentBet}-${state.street}`;
-  const lastKey = React.useRef(key);
-  if (lastKey.current !== key) {
-    lastKey.current = key;
-    setRaiseTo(legal.minRaiseTo);
-  }
+  // 스트리트가 바뀌면 선행 액션은 초기화된다.
+  useEffect(() => {
+    setPreAction(null);
+  }, [state.street, state.board.length]);
 
-  const pot = totalPot(state);
-  const presets = buildPresets(legal, pot);
-  const clamp = (v: number) => Math.max(legal.minRaiseTo, Math.min(legal.maxRaiseTo, v));
+  // 콜 금액이 바뀌면(누가 레이즈) "Call" 예약은 취소 — 샘플 동작과 동일.
+  useEffect(() => {
+    if (preAction === "call" && owed !== preCallAmount.current) setPreAction(null);
+  }, [owed, preAction]);
+
+  // 내 차례가 오면 예약된 선행 액션을 실행.
+  useEffect(() => {
+    if (disabled || !preAction) return;
+    const choice = preAction;
+    setPreAction(null);
+    if (choice === "checkFold") {
+      onAction(legal.canCheck ? { type: "check" } : { type: "fold" });
+    } else if (choice === "call") {
+      onAction(legal.canCheck ? { type: "check" } : { type: "call" });
+    }
+  }, [disabled, preAction, legal.canCheck, onAction]);
+
   const fmt = formatGameMoney;
-  const click = (action: () => void) => {
+  const act = (a: Action) => {
     playSfx("ui_click");
-    action();
+    onAction(a);
   };
 
+  if (disabled) {
+    const hasLiveHand = hero && hero.status === "active" && hero.holeCards.length > 0;
+    if (!hasLiveHand) return <View style={styles.wrap} />;
+    return (
+      <View style={styles.wrap}>
+        <View style={styles.row}>
+          <View style={styles.flexSpacerSm} />
+          <PreActionTile
+            label={owed > 0 ? "Fold" : "Check/Fold"}
+            checked={preAction === "checkFold"}
+            onPress={() => setPreAction((v) => (v === "checkFold" ? null : "checkFold"))}
+          />
+          <PreActionTile
+            label={owed > 0 ? `Call ${fmt(owed)}` : "Check"}
+            checked={preAction === "call"}
+            onPress={() => {
+              preCallAmount.current = owed;
+              setPreAction((v) => (v === "call" ? null : "call"));
+            }}
+          />
+        </View>
+      </View>
+    );
+  }
+
+  const presets = buildPresets(state, legal);
+  const [primary, ...stacked] = presets;
+  const raiseVerb = state.currentBet > 0 ? "Raise" : "Bet";
+
   return (
-    <View style={styles.wrap}>
-      {legal.canRaise && (
-        <View style={styles.raiseRow}>
-          <Pressable
-            disabled={disabled}
-            style={[styles.step, disabled && styles.disabled]}
-            onPress={() => click(() => setRaiseTo((v) => clamp(v - state.bigBlind)))}
-          >
-            <Text style={styles.stepText}>−</Text>
-          </Pressable>
-          <View style={styles.raiseAmt}>
-            <Text style={styles.raiseAmtText}>{fmt(raiseTo)}</Text>
-          </View>
-          <Pressable
-            disabled={disabled}
-            style={[styles.step, disabled && styles.disabled]}
-            onPress={() => click(() => setRaiseTo((v) => clamp(v + state.bigBlind)))}
-          >
-            <Text style={styles.stepText}>＋</Text>
-          </Pressable>
-          {presets.map((p) => (
-            <Pressable
-              key={p.label}
-              disabled={disabled}
-              style={[styles.preset, disabled && styles.disabled]}
-              onPress={() => click(() => setRaiseTo(clamp(p.to)))}
-            >
-              <Text style={styles.presetText}>{p.label}</Text>
-            </Pressable>
+    <View style={styles.wrap} pointerEvents="box-none">
+      {legal.canRaise && stacked.length > 0 && (
+        <View style={styles.column} pointerEvents="box-none">
+          {[...stacked].reverse().map((p) => (
+            <RaiseTile
+              key={p.tag}
+              tag={p.tag}
+              verb={p.to >= legal.maxRaiseTo ? "All-In" : raiseVerb}
+              amount={fmt(p.to)}
+              onPress={() => act({ type: "raise", to: p.to })}
+            />
           ))}
         </View>
       )}
 
-      <View style={styles.btnRow}>
-        <GradientButton disabled={disabled} colors={GRAD.fold} label="폴드" onPress={() => onAction({ type: "fold" })} />
+      <View style={styles.row}>
+        <Pressable testID="action-fold" style={styles.tile} onPress={() => act({ type: "fold" })}>
+          <Text style={styles.tileLabel}>Fold</Text>
+        </Pressable>
 
         {legal.canCheck ? (
-          <GradientButton disabled={disabled} colors={GRAD.call} label="체크" onPress={() => onAction({ type: "check" })} />
+          <Pressable testID="action-check" style={styles.tile} onPress={() => act({ type: "check" })}>
+            <Text style={styles.tileLabel}>Check</Text>
+          </Pressable>
         ) : (
-          <GradientButton
-            disabled={disabled}
-            colors={GRAD.call}
-            label={`콜 ${fmt(legal.callAmount)}`}
-            onPress={() => onAction({ type: "call" })}
-          />
+          <Pressable testID="action-call" style={styles.tile} onPress={() => act({ type: "call" })}>
+            <Text style={styles.tileLabelSm}>{legal.callAmount >= (hero?.stack ?? Infinity) ? "All-In" : "Call"}</Text>
+            <Text style={styles.tileAmount}>{fmt(legal.callAmount)}</Text>
+          </Pressable>
         )}
 
-        {legal.canRaise && (
-          <GradientButton
-            disabled={disabled}
-            colors={GRAD.raise}
-            textColor="#fff4d7"
-            label={state.currentBet > 0 ? "레이즈" : "벳"}
-            subLabel={`${fmt(raiseTo)}${raiseTo >= legal.maxRaiseTo ? " 올인" : ""}`}
-            onPress={() => onAction({ type: "raise", to: raiseTo })}
+        {legal.canRaise && primary ? (
+          <RaiseTile
+            tag={primary.tag}
+            verb={primary.to >= legal.maxRaiseTo ? "All-In" : raiseVerb}
+            amount={fmt(primary.to)}
+            onPress={() => act({ type: "raise", to: primary.to })}
+            inRow
           />
+        ) : (
+          <View style={[styles.tile, styles.tileGhost]} />
         )}
       </View>
     </View>
   );
 }
 
-function buildPresets(legal: LegalActions, pot: number) {
-  const items: { label: string; to: number }[] = [];
-  if (pot > 0) {
-    items.push({ label: "½팟", to: Math.round(legal.callAmount + pot * 0.5) });
-    items.push({ label: "팟", to: Math.round(legal.callAmount + pot) });
-  }
-  items.push({ label: "올인", to: legal.maxRaiseTo });
-  return items;
+function RaiseTile({
+  tag,
+  verb,
+  amount,
+  onPress,
+  inRow = false,
+}: {
+  tag: string;
+  verb: string;
+  amount: string;
+  onPress: () => void;
+  inRow?: boolean;
+}) {
+  return (
+    <Pressable style={[styles.tile, inRow ? null : styles.columnTile]} onPress={onPress}>
+      <View style={styles.raiseHead}>
+        <Text style={styles.raiseTag}>{tag}</Text>
+        <Text style={styles.raiseVerb}>{verb}</Text>
+      </View>
+      <Text style={styles.tileAmount}>{amount}</Text>
+    </Pressable>
+  );
 }
 
+function PreActionTile({ label, checked, onPress }: { label: string; checked: boolean; onPress: () => void }) {
+  return (
+    <Pressable
+      style={[styles.tile, styles.preTile]}
+      onPress={() => {
+        playSfx("ui_click");
+        onPress();
+      }}
+    >
+      <View style={[styles.checkbox, checked && styles.checkboxOn]}>
+        {checked ? <Text style={styles.checkMark}>✓</Text> : null}
+      </View>
+      <Text style={[styles.preLabel, checked && styles.preLabelOn]} numberOfLines={1}>
+        {label}
+      </Text>
+    </Pressable>
+  );
+}
+
+/** 프리플랍은 2/3/4BB + Pot, 이후 스트리트는 Min/½/¾/Pot. 첫 항목이 하단 줄, 나머지는 우측 스택. */
+function buildPresets(state: HandState, legal: LegalActions): Preset[] {
+  const clamp = (v: number) => Math.max(legal.minRaiseTo, Math.min(legal.maxRaiseTo, Math.round(v)));
+  const pot = totalPot(state);
+  const potRaise = state.currentBet + legal.callAmount + pot;
+  const raw: Preset[] =
+    state.street === "preflop"
+      ? [
+          { tag: "2BB", to: state.bigBlind * 2 },
+          { tag: "3BB", to: state.bigBlind * 3 },
+          { tag: "4BB", to: state.bigBlind * 4 },
+          { tag: "Pot", to: potRaise },
+        ]
+      : [
+          { tag: "Min", to: legal.minRaiseTo },
+          { tag: "½ Pot", to: state.currentBet + legal.callAmount + pot * 0.5 },
+          { tag: "¾ Pot", to: state.currentBet + legal.callAmount + pot * 0.75 },
+          { tag: "Pot", to: potRaise },
+        ];
+  const seen = new Set<number>();
+  return raw
+    .map((p) => ({ ...p, to: clamp(p.to) }))
+    .filter((p) => {
+      if (seen.has(p.to)) return false;
+      seen.add(p.to);
+      return true;
+    });
+}
+
+const TILE_H = 50;
+
 const styles = StyleSheet.create({
-  wrap: { paddingHorizontal: 12, paddingBottom: 10, paddingTop: 8, backgroundColor: "#1d120e", borderTopWidth: 1, borderTopColor: "#664631" },
-  raiseRow: { flexDirection: "row", alignItems: "center", marginBottom: 8, flexWrap: "wrap", gap: 6 },
-  step: {
-    width: 38, height: 38, borderRadius: 19, backgroundColor: "#392c26", borderWidth: 1, borderColor: "#806047",
-    alignItems: "center", justifyContent: "center",
+  wrap: { paddingHorizontal: 8, paddingBottom: 10, paddingTop: 6, minHeight: TILE_H + 16 },
+  column: {
+    position: "absolute",
+    right: 8,
+    bottom: TILE_H + 16 + 6,
+    width: "32%",
+    gap: 6,
   },
-  stepText: { color: theme.text, fontSize: 22, fontWeight: "800" },
-  raiseAmt: {
-    minWidth: 66, height: 38, borderRadius: 19, backgroundColor: "#211611",
-    alignItems: "center", justifyContent: "center", paddingHorizontal: 8,
+  row: { flexDirection: "row", gap: 6 },
+  flexSpacerSm: { flex: 0.6 },
+  tile: {
+    flex: 1,
+    height: TILE_H,
+    borderRadius: 8,
+    backgroundColor: "rgba(28,28,30,0.96)",
+    borderWidth: 1,
+    borderColor: "#3a3a3d",
+    alignItems: "center",
+    justifyContent: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.55,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 2 },
   },
-  raiseAmtText: { color: theme.gold, fontSize: 16, fontWeight: "800" },
-  preset: {
-    paddingHorizontal: 10, height: 38, borderRadius: 19, backgroundColor: "#392c26", borderWidth: 1, borderColor: "#806047",
-    alignItems: "center", justifyContent: "center",
+  tileGhost: { opacity: 0 },
+  columnTile: { flex: 0, alignSelf: "stretch" },
+  tileLabel: { color: "#f2f2f2", fontSize: 17, fontWeight: "600" },
+  tileLabelSm: { color: "#f2f2f2", fontSize: 14, fontWeight: "600", lineHeight: 17 },
+  tileAmount: { color: prime.gold, fontSize: 18, fontWeight: "800", lineHeight: 22 },
+  raiseHead: { flexDirection: "row", alignSelf: "stretch", justifyContent: "space-between", paddingHorizontal: 8 },
+  raiseTag: { color: "#bdbdc2", fontSize: 11, fontWeight: "600" },
+  raiseVerb: { color: "#f2f2f2", fontSize: 12, fontWeight: "700" },
+  preTile: { flexDirection: "row", justifyContent: "flex-start", paddingHorizontal: 10, gap: 8 },
+  checkbox: {
+    width: 18,
+    height: 18,
+    borderRadius: 3,
+    borderWidth: 1.5,
+    borderColor: "#7c7c80",
+    backgroundColor: "#1a1a1c",
+    alignItems: "center",
+    justifyContent: "center",
   },
-  presetText: { color: theme.text, fontWeight: "700", fontSize: 13 },
-  btnRow: { flexDirection: "row", gap: 8 },
-  btnWrap: {
-    flex: 1, height: 54, borderRadius: 28, overflow: "hidden",
-    shadowColor: "#000", shadowOpacity: 0.3, shadowRadius: 4, shadowOffset: { width: 0, height: 2 },
-  },
-  btn: { flex: 1, alignItems: "center", justifyContent: "center", borderWidth: 1, borderColor: "rgba(255,214,163,0.45)", borderRadius: 28 },
-  btnText: { color: "#fff", fontWeight: "900", fontSize: 16, lineHeight: 19 },
-  btnSubText: { marginTop: 1, fontWeight: "900", fontSize: 13, lineHeight: 15 },
-  disabled: { opacity: 0.45 },
+  checkboxOn: { backgroundColor: prime.gold, borderColor: prime.gold },
+  checkMark: { color: "#1c1400", fontWeight: "900", fontSize: 12, lineHeight: 14 },
+  preLabel: { color: "#d9d9dc", fontSize: 13, fontWeight: "600", flexShrink: 1 },
+  preLabelOn: { color: prime.gold },
 });
