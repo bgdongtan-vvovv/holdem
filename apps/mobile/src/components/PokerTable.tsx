@@ -208,10 +208,13 @@ export function PokerTable({
   }, [state, currentPot]);
 
   const potPile = chipPileMetrics(POT_CHIP_SIZE);
-  // 팟 칩: 보드카드 바로 아래, 금액 알약은 그 밑. 칩 더미는 박스 하단에서 최대 ~2.7칩 높이 위까지
-  // 쌓이므로 박스 하단을 카드 하단보다 충분히 내려 칩 윗면이 카드와 겹치지 않게 한다.
+  // 팟 칩: 보드카드 바로 아래, 금액 알약은 그 밑. 더미 "윗면"이 카드 하단에서 고정된 여백만큼
+  // 떨어지도록 top 기준으로 앵커하고, 거기서 중심을 계산한다 — 칩 사이즈가 커져도(= 더미가
+  // 높아져도) center 를 height/2 만큼 끌어올리지 않으므로 카드와 겹치지 않는다.
   const boardBottom = tableSize.height * CENTER.boardTopY + boardDims.h + 4;
-  const center: Point = { x: tableSize.width / 2, y: boardBottom + 52 - potPile.height / 2 };
+  const potTopGap = 14;
+  const potTop = boardBottom + potTopGap;
+  const center: Point = { x: tableSize.width / 2, y: potTop + potPile.height / 2 };
   const blindLine = `Blinds ${formatGameMoney(state.smallBlind)} | ${formatGameMoney(state.bigBlind)}`;
   const activeCount = state.players.filter((p) => p.status !== "out").length;
   // 서버는 상대 홀카드를 보내지 않는다 → 핸드 진행 중인 상대에게는 뒷면 카드만 그린다.
