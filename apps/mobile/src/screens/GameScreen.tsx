@@ -254,6 +254,25 @@ function TableView({
     };
   }, [shouldPlayShowdownEffect, state.result, wentToShowdown]);
 
+  // 쇼다운에서 패배한(공개됐지만 못 받은) 좌석에 자동으로 "아쉬움" 리액션을 한 번 띄운다
+  // (기존 이모지 반응 버블을 재사용 — 새 UI 없이 테이블 분위기만 보강).
+  // state.result 는 핸드마다 새로 만들어지는 객체라 참조 비교로 "이미 처리한 핸드"를 가린다
+  // (올인 쇼다운이 아닌 일반 쇼다운에서도 매 핸드 다시 트리거돼야 하므로 showdownEffectKey 로는 부족).
+  const lastLoserResultRef = React.useRef<typeof state.result>(undefined);
+  React.useEffect(() => {
+    if (!wentToShowdown || !showdownCardsReady) return;
+    if (lastLoserResultRef.current === state.result) return;
+    lastLoserResultRef.current = state.result;
+    const winnerSeats = new Set((state.result?.awards ?? []).filter((a) => a.amount > 0).map((a) => a.seat));
+    const losers = (state.result?.showdown ?? []).filter(
+      (entry) => entry.hand !== null && !winnerSeats.has(entry.seat),
+    );
+    const timers = losers.map((entry, i) =>
+      setTimeout(() => sendReaction(entry.seat, "😮"), 150 + i * 180),
+    );
+    return () => timers.forEach(clearTimeout);
+  }, [wentToShowdown, showdownCardsReady, state.result, sendReaction]);
+
   const [felt, setFelt] = React.useState<FeltId>("charcoal");
   const [menuOpen, setMenuOpen] = React.useState(false);
   const hero = humanSeat >= 0 ? state.players[humanSeat] : undefined;

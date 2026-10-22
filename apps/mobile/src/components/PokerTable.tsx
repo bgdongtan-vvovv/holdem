@@ -137,6 +137,14 @@ export function PokerTable({
     bestFive !== null &&
     bestFive.rank.category !== HandCategory.HighCard;
   const matchedCards = new Set(showMadeHand ? madeCards(bestFive).map(cardKey) : []);
+  // 쇼다운에서 카드가 공개된 모든 콘텐더의 좌석별 족보 이름(센터의 "대표 핸드" 배지와는 별개로,
+  // 각자 좌석 옆에 자기 족보를 보여준다).
+  const showdownLabels = new Map<number, string>();
+  if (state.street === "complete" && reveal) {
+    for (const entry of state.result?.showdown ?? []) {
+      if (entry.hand) showdownLabels.set(entry.seat, HAND_CATEGORY_NAMES[entry.hand.category]);
+    }
+  }
   const currentPot = totalPot(state);
   const ready = tableSize.width > 0;
   const seatScale = ready ? Math.min(1, Math.max(0.78, tableSize.width / 400)) : 1;
@@ -326,6 +334,7 @@ export function PokerTable({
                   onOpenCards={isHuman ? onOpenHumanCards : undefined}
                   reaction={reactions?.[p.seat]}
                   inHand={handLive}
+                  handLabel={showdownLabels.get(p.seat)}
                 />
               </View>
             );
@@ -502,39 +511,71 @@ function BetToPot({
   );
 }
 
+const POT_FLIGHT_DELAY_MS = 350;
+const POT_FLIGHT_DURATION_MS = 1250;
+
 function PotToWinner({ amount, from, to }: { amount: number; from: Point; to: Point }) {
   const progress = useRef(new Animated.Value(0)).current;
+  // 칩이 도착한 뒤 좌석 위로 "+금액"이 떠오르는 전용 타임라인 — 칩 flight 와 분리해서
+  // 도착 이후에도 계속 올라가며 사라지게 한다.
+  const amountRise = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     Animated.timing(progress, {
       toValue: 1,
-      delay: 350,
-      duration: 1250,
+      delay: POT_FLIGHT_DELAY_MS,
+      duration: POT_FLIGHT_DURATION_MS,
       easing: Easing.inOut(Easing.cubic),
       useNativeDriver: false,
     }).start();
-  }, [progress]);
+    Animated.timing(amountRise, {
+      toValue: 1,
+      delay: POT_FLIGHT_DELAY_MS + POT_FLIGHT_DURATION_MS * 0.7,
+      duration: 900,
+      easing: Easing.out(Easing.quad),
+      useNativeDriver: true,
+    }).start();
+  }, [progress, amountRise]);
 
   const pile = chipPileMetrics(24);
   return (
-    <Animated.View
-      pointerEvents="none"
-      style={[
-        styles.flyingPot,
-        {
-          left: from.x - pile.width / 2,
-          top: from.y - pile.height / 2,
-          opacity: progress.interpolate({ inputRange: [0, 0.82, 1], outputRange: [1, 1, 0] }),
-          transform: [
-            { translateX: progress.interpolate({ inputRange: [0, 1], outputRange: [0, to.x - from.x] }) },
-            { translateY: progress.interpolate({ inputRange: [0, 1], outputRange: [0, to.y - from.y] }) },
-            { scale: progress.interpolate({ inputRange: [0, 0.35, 1], outputRange: [0.7, 1.05, 0.5] }) },
-          ],
-        },
-      ]}
-    >
-      <ChipPile amount={amount} chipSize={24} />
-    </Animated.View>
+    <>
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          styles.flyingPot,
+          {
+            left: from.x - pile.width / 2,
+            top: from.y - pile.height / 2,
+            opacity: progress.interpolate({ inputRange: [0, 0.82, 1], outputRange: [1, 1, 0] }),
+            transform: [
+              { translateX: progress.interpolate({ inputRange: [0, 1], outputRange: [0, to.x - from.x] }) },
+              { translateY: progress.interpolate({ inputRange: [0, 1], outputRange: [0, to.y - from.y] }) },
+              { scale: progress.interpolate({ inputRange: [0, 0.35, 1], outputRange: [0.7, 1.05, 0.5] }) },
+            ],
+          },
+        ]}
+      >
+        <ChipPile amount={amount} chipSize={24} />
+      </Animated.View>
+      <Animated.View
+        pointerEvents="none"
+        style={[
+          styles.winnerAmountWrap,
+          {
+            left: to.x,
+            top: to.y - 34,
+            opacity: amountRise.interpolate({ inputRange: [0, 0.15, 0.75, 1], outputRange: [0, 1, 1, 0] }),
+            transform: [
+              { translateY: amountRise.interpolate({ inputRange: [0, 1], outputRange: [6, -30] }) },
+              { scale: amountRise.interpolate({ inputRange: [0, 0.2, 1], outputRange: [0.7, 1.08, 1] }) },
+            ],
+          },
+        ]}
+      >
+        <Text style={styles.winnerAmountText}>+{formatGameMoney(amount)}</Text>
+      </Animated.View>
+    </>
   );
 }
 
@@ -574,6 +615,20 @@ export function ShowdownBurst() {
         ]}
       >
         <ShowdownFireSequence />
+      </Animated.View>
+      <Animated.View
+        style={[
+          styles.showdownTextWrap,
+          {
+            opacity: progress.interpolate({ inputRange: [0, 0.18, 0.86, 1], outputRange: [0, 1, 1, 0] }),
+            transform: [
+              { scale: progress.interpolate({ inputRange: [0, 0.22, 0.4], outputRange: [0.4, 1.12, 1], extrapolate: "clamp" }) },
+            ],
+          },
+        ]}
+      >
+        <Text style={styles.showdownText}>SHOWDOWN</Text>
+        <Text style={styles.showdownSubText}>ALL-IN</Text>
       </Animated.View>
     </View>
   );
@@ -719,6 +774,15 @@ const styles = StyleSheet.create({
   dealer: { position: "absolute", zIndex: 11 },
   betFlight: { position: "absolute", zIndex: 24, alignItems: "center" },
   flyingPot: { position: "absolute", zIndex: 30 },
+  winnerAmountWrap: { position: "absolute", zIndex: 31, marginLeft: -40, width: 80, alignItems: "center" },
+  winnerAmountText: {
+    color: "#ffd56a",
+    fontWeight: "900",
+    fontSize: 16,
+    textShadowColor: "#4a2300",
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 3,
+  },
   showdownOverlay: {
     position: "absolute",
     left: 0,

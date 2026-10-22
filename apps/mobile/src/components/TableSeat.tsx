@@ -40,6 +40,7 @@ export function TableSeat({
   onOpenCards,
   reaction,
   inHand = false,
+  handLabel,
 }: {
   player: PlayerState;
   isHuman: boolean;
@@ -60,6 +61,8 @@ export function TableSeat({
   reaction?: { emoji: string; key: number };
   /** 핸드 진행 중 여부 — 카드 정보가 없는 상대에게 뒷면 카드를 그릴 때 쓴다. */
   inHand?: boolean;
+  /** 쇼다운에서 카드가 공개된 좌석에 한해 족보 이름(예: "Two Pair")을 보여준다. */
+  handLabel?: string;
 }) {
   const folded = player.status === "folded";
   const out = player.status === "out";
@@ -153,6 +156,16 @@ export function TableSeat({
         )}
 
         {reaction && <ReactionBubble key={reaction.key} emoji={reaction.emoji} />}
+      </View>
+
+      <View style={styles.handLabelSlot}>
+        {handLabel && (
+          <AnimatedAppear style={styles.handLabelBadge} translateY={-4} duration={360}>
+            <Text style={styles.handLabelText} numberOfLines={1}>
+              {handLabel}
+            </Text>
+          </AnimatedAppear>
+        )}
       </View>
 
       <View style={[styles.plate, isActive && styles.plateActive, isWinner && styles.plateWin]}>
@@ -598,6 +611,16 @@ const styles = StyleSheet.create({
   cards: { position: "absolute", flexDirection: "row", zIndex: 6, alignSelf: "center" },
   cardsOther: { top: "6%" },
   cardsHuman: { top: -5 },
+  handLabelSlot: { height: 15, justifyContent: "center", alignItems: "center", zIndex: 7 },
+  handLabelBadge: {
+    paddingHorizontal: 7,
+    paddingVertical: 1,
+    borderRadius: 8,
+    backgroundColor: "rgba(10,10,10,0.8)",
+    borderWidth: 1,
+    borderColor: "rgba(242,193,78,0.55)",
+  },
+  handLabelText: { color: prime.gold, fontWeight: "800", fontSize: 9.5, letterSpacing: 0.3 },
   plate: {
     marginTop: -4,
     width: 92,
