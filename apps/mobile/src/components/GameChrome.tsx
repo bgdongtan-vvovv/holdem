@@ -1,7 +1,8 @@
-import React from "react";
-import { Pressable, StyleSheet, Text, View } from "react-native";
+import React, { useRef, useState } from "react";
+import { PanResponder, Pressable, StyleSheet, Text, View, type LayoutChangeEvent } from "react-native";
 import type { Card } from "@holdem/poker-engine";
-import { playSfx } from "../sound/sfx";
+import { getSfxVolume, getVoiceVolume, playSfx, setSfxVolume, setVoiceVolume } from "../sound/sfx";
+import { getMusicVolume, setMusicVolume } from "../sound/music";
 import { FELTS, prime, type FeltId } from "./primeTheme";
 
 const RANK_LABEL: Record<number, string> = {
@@ -100,6 +101,13 @@ export function GameMenuSheet({
           ))}
         </View>
 
+        <Text style={styles.sheetLabel}>소리</Text>
+        <View style={styles.soundPanel}>
+          <VolumeSlider label="효과음" getValue={getSfxVolume} onChange={setSfxVolume} />
+          <VolumeSlider label="배경음" getValue={getMusicVolume} onChange={setMusicVolume} />
+          <VolumeSlider label="음성" getValue={getVoiceVolume} onChange={setVoiceVolume} />
+        </View>
+
         <View style={styles.sheetActions}>
           <Pressable
             testID="exit-table"
@@ -118,6 +126,55 @@ export function GameMenuSheet({
           </Pressable>
         </View>
       </View>
+    </View>
+  );
+}
+
+/**
+ * 효과음/배경음/음성 조절용 커스텀 슬라이더 — 별도 슬라이더 라이브러리 없이
+ * TableSeat 의 카드 peek 제스처와 같은 PanResponder 트랙 드래그 방식으로 구현.
+ */
+function VolumeSlider({
+  label,
+  getValue,
+  onChange,
+}: {
+  label: string;
+  getValue: () => number;
+  onChange: (v: number) => void;
+}) {
+  const [value, setValue] = useState(getValue);
+  const trackWidth = useRef(1);
+
+  const applyFromX = (x: number) => {
+    const ratio = Math.max(0, Math.min(1, x / trackWidth.current));
+    setValue(ratio);
+    onChange(ratio);
+  };
+
+  const panResponder = useRef(
+    PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
+      onPanResponderGrant: (evt) => applyFromX(evt.nativeEvent.locationX),
+      onPanResponderMove: (evt) => applyFromX(evt.nativeEvent.locationX),
+    }),
+  ).current;
+
+  return (
+    <View style={styles.volumeRow}>
+      <Text style={styles.volumeLabel}>{label}</Text>
+      <View
+        style={styles.volumeTrack}
+        onLayout={(e: LayoutChangeEvent) => {
+          trackWidth.current = Math.max(1, e.nativeEvent.layout.width);
+        }}
+        {...panResponder.panHandlers}
+      >
+        <View style={styles.volumeRail} />
+        <View style={[styles.volumeFill, { width: `${value * 100}%` }]} />
+        <View style={[styles.volumeThumb, { left: `${value * 100}%` }]} />
+      </View>
+      <Text style={styles.volumeValue}>{Math.round(value * 100)}</Text>
     </View>
   );
 }
@@ -243,6 +300,46 @@ const styles = StyleSheet.create({
   },
   feltSwatchOn: { borderColor: "#f0f0f0" },
   feltCheck: { color: "#fff", fontWeight: "900", fontSize: 16 },
+  soundPanel: {
+    padding: 12,
+    gap: 10,
+    borderRadius: 12,
+    backgroundColor: prime.panel,
+    marginBottom: 14,
+  },
+  volumeRow: { flexDirection: "row", alignItems: "center", gap: 10 },
+  volumeLabel: { color: "#d8d8d8", fontSize: 12, width: 44 },
+  volumeTrack: {
+    flex: 1,
+    height: 22,
+    justifyContent: "center",
+  },
+  volumeRail: {
+    position: "absolute",
+    left: 0,
+    right: 0,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: "rgba(255,255,255,0.14)",
+  },
+  volumeFill: {
+    position: "absolute",
+    left: 0,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: prime.gold,
+  },
+  volumeThumb: {
+    position: "absolute",
+    width: 14,
+    height: 14,
+    borderRadius: 7,
+    backgroundColor: "#fff",
+    marginLeft: -7,
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.3)",
+  },
+  volumeValue: { color: prime.textDim, fontSize: 11, width: 24, textAlign: "right" },
   sheetActions: {
     flexDirection: "row",
     gap: 28,

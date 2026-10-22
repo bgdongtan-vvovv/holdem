@@ -11,6 +11,7 @@ import { useLocalTable, type SeatMeta, type TableOptions } from "../game/useLoca
 import { useRemoteTable, type RemoteTableOptions } from "../game/useRemoteTable";
 import { formatGameMoney } from "../formatMoney";
 import { playSfx, unlockSfx } from "../sound/sfx";
+import { playMusic, stopMusic } from "../sound/music";
 
 const SMALL_BLIND = 10;
 const BIG_BLIND = 20;
@@ -208,6 +209,14 @@ function TableView({
     if (audioUnlocked.current) return;
     audioUnlocked.current = true;
     void unlockSfx("ui_click");
+    void playMusic("table");
+  }, []);
+
+  // 테이블을 나가면(화면 언마운트) 배경음도 멈춘다.
+  React.useEffect(() => {
+    return () => {
+      void stopMusic();
+    };
   }, []);
   const lastLegal = React.useRef<LegalActions>({
     seat: humanSeat,

@@ -75,6 +75,46 @@ const ACTION_ADVANCE_DELAY_MS = 220;
 let enabled = true;
 let initialized = false;
 let initPromise: Promise<void> | null = null;
+/** 효과음 배수(0~1) — ACTION_VOICES 를 제외한 일반 SFX. */
+let sfxVolumeMul = 1;
+/** 액션 보이스 배수(0~1) — 체크/콜/레이즈/올인/폴드 음성. */
+let voiceVolumeMul = 1;
+
+function baseVolume(name: Sfx): number {
+  return VOLUME[name] ?? 0.68;
+}
+
+function effectiveVolume(name: Sfx): number {
+  const mul = (ACTION_VOICES as readonly Sfx[]).includes(name) ? voiceVolumeMul : sfxVolumeMul;
+  return baseVolume(name) * mul;
+}
+
+function applyVolumesToLoadedSounds(): void {
+  (Object.keys(sounds) as Sfx[]).forEach((k) => {
+    const s = sounds[k];
+    if (s) void s.setVolumeAsync(effectiveVolume(k)).catch(() => {});
+  });
+}
+
+/** 효과음(카드/칩/UI 등) 볼륨을 0~1 로 설정하고, 이미 로드된 사운드에도 즉시 반영한다. */
+export function setSfxVolume(v: number): void {
+  sfxVolumeMul = Math.max(0, Math.min(1, v));
+  applyVolumesToLoadedSounds();
+}
+
+/** 액션 보이스(체크/콜/레이즈/폴드 등) 볼륨을 0~1 로 설정. */
+export function setVoiceVolume(v: number): void {
+  voiceVolumeMul = Math.max(0, Math.min(1, v));
+  applyVolumesToLoadedSounds();
+}
+
+export function getSfxVolume(): number {
+  return sfxVolumeMul;
+}
+
+export function getVoiceVolume(): number {
+  return voiceVolumeMul;
+}
 
 const warn = (message: string, error?: unknown) => {
   if (typeof __DEV__ !== "undefined" && __DEV__) {
@@ -97,7 +137,7 @@ async function loadSfx(): Promise<void> {
     await Audio.setAudioModeAsync({ playsInSilentModeIOS: true, shouldDuckAndroid: true });
     await Promise.all(
       (Object.keys(FILES) as Sfx[]).map(async (k) => {
-        const { sound } = await Audio.Sound.createAsync(FILES[k], { volume: VOLUME[k] ?? 0.68 });
+        const { sound } = await Audio.Sound.createAsync(FILES[k], { volume: effectiveVolume(k) });
         sounds[k] = sound;
       }),
     );
