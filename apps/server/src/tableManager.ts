@@ -18,8 +18,11 @@ import type { Action } from "@holdem/poker-engine";
 import { EVENTS, type TableSummary } from "@holdem/shared";
 import { BOT_SOCKET_PREFIX, Table } from "./table.js";
 
-const SHOWDOWN_DELAY_MS = 5000;
-const NEXT_HAND_DELAY_MS = 3000;
+// 쇼다운 결과가 너무 느리게 뜬다는 피드백으로 단축 (8초 → 5초 총 대기).
+// SHOWDOWN_DELAY_MS 는 클라이언트의 올인 쇼다운 버스트(ShowdownBurst, ~2.2초)가
+// 끊기지 않을 최소치는 유지한다.
+const SHOWDOWN_DELAY_MS = 3200;
+const NEXT_HAND_DELAY_MS = 1800;
 const DEFAULT_SMALL_BLIND = 10;
 const DEFAULT_BIG_BLIND = 20;
 /** 사람이 혼자 접속해도 바로 테스트할 수 있도록 채워 넣을 최소 인원 (6인 테이블 중 5석 채움). */

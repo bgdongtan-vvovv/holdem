@@ -842,6 +842,11 @@ const styles = StyleSheet.create({
     shadowRadius: 14,
   },
   showdownTextWrap: {
+    // 절대 위치로 띄워서 showdownVideoWrap 의 기존 중앙 정렬(translateY(-80) 보정)을
+    // 건드리지 않는다 — 같은 flex 컨테이너의 두 번째 자식으로 두면 전체 그룹이
+    // 다시 센터링되면서 불 애니메이션 위치가 밀려 보인다.
+    position: "absolute",
+    top: "64%",
     alignItems: "center",
     paddingHorizontal: 22,
     paddingVertical: 10,
