@@ -66,7 +66,7 @@ const CENTER = {
   infoTopY: 0.628,
   logoTop: "54%" as const,
 };
-const POT_CHIP_SIZE = 16;
+const POT_CHIP_SIZE = 32;
 
 export function PokerTable({
   state,
@@ -537,7 +537,7 @@ function PotToWinner({ amount, from, to }: { amount: number; from: Point; to: Po
     }).start();
   }, [progress, amountRise]);
 
-  const pile = chipPileMetrics(24);
+  const pile = chipPileMetrics(48);
   return (
     <>
       <Animated.View
@@ -556,7 +556,7 @@ function PotToWinner({ amount, from, to }: { amount: number; from: Point; to: Po
           },
         ]}
       >
-        <ChipPile amount={amount} chipSize={24} />
+        <ChipPile amount={amount} chipSize={48} />
       </Animated.View>
       <Animated.View
         pointerEvents="none"

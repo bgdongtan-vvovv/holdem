@@ -178,7 +178,7 @@ export class Table {
     for (let seat = 0; seat < SEAT_COUNT; seat++) {
       const occ = this.occupants.get(seat);
       if (!occ) {
-        players.push({ seat, id: "", stack: 0, committed: 0, status: "empty", holeCards: null, holeCardCount: 0 });
+        players.push({ seat, id: "", stack: 0, committed: 0, totalCommitted: 0, status: "empty", holeCards: null, holeCardCount: 0 });
         continue;
       }
       const engineIdx = h ? this.engineToSeat.indexOf(seat) : -1;
@@ -191,6 +191,7 @@ export class Table {
         id: occ.id,
         stack: ep ? ep.stack : occ.stack,
         committed: ep?.committed ?? 0,
+        totalCommitted: ep?.totalCommitted ?? 0,
         status: ep ? (ep.status as PublicPlayer["status"]) : "active",
         holeCards: ep && reveal && ep.holeCards.length ? ep.holeCards : null,
         holeCardCount: ep ? ep.holeCards.length : 0,

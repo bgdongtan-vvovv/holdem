@@ -18,6 +18,8 @@ export interface PublicPlayer {
   id: string;
   stack: number;
   committed: number; // 이번 라운드 베팅액
+  /** 이번 핸드 전체 누적 베팅액 (팟 총액 계산용). 라운드가 넘어가도 리셋되지 않는다. */
+  totalCommitted: number;
   status: "active" | "folded" | "allin" | "out" | "empty";
   /** 본인 좌석이면 실제 카드, 아니면 null. 쇼다운 공개 시에는 노출됨. */
   holeCards: Card[] | null;

@@ -89,8 +89,7 @@ function adaptState(
     seat: i,
     stack: p.stack,
     committed: p.committed,
-    // 서버가 핸드 전체 누적액(totalCommitted)을 아직 브로드캐스트하지 않아 committed 로 근사한다.
-    totalCommitted: p.committed,
+    totalCommitted: p.totalCommitted,
     holeCards: p.holeCards ?? [],
     status: toPlayerStatus(p.status),
     hasActed: false,

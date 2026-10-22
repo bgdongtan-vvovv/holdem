@@ -22,8 +22,8 @@ const SHOWDOWN_DELAY_MS = 5000;
 const NEXT_HAND_DELAY_MS = 3000;
 const DEFAULT_SMALL_BLIND = 10;
 const DEFAULT_BIG_BLIND = 20;
-/** 사람이 혼자 접속해도 바로 테스트할 수 있도록 채워 넣을 최소 인원. */
-const MIN_OCCUPANTS_FOR_TESTING = 2;
+/** 사람이 혼자 접속해도 바로 테스트할 수 있도록 채워 넣을 최소 인원 (6인 테이블 중 5석 채움). */
+const MIN_OCCUPANTS_FOR_TESTING = 5;
 const BOT_ACT_DELAY_MIN_MS = 600;
 const BOT_ACT_DELAY_MAX_MS = 1400;
 const BOT_NAMES = ["봇영수", "봇하나", "봇두리", "봇세찌", "봇네모"];
